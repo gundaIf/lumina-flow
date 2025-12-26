@@ -36,59 +36,88 @@
         #game-container {
             position: relative;
             z-index: 2;
-            width: 80%;
-            max-width: 900px;
-            text-align: center;
+            width: 85%;
+            max-width: 1000px;
+            height: 60vh;
+            display: flex;
+            flex-direction: column;
         }
 
         #hud {
             display: flex;
             justify-content: space-between;
             margin-bottom: 2rem;
-            font-size: 0.9rem;
+            font-size: 1rem;
             opacity: 0.6;
             letter-spacing: 2px;
+            font-weight: bold;
         }
 
         #display-text {
-            font-size: 2.5rem;
-            line-height: 1.5;
+            font-size: 2.2rem;
+            line-height: 1.6;
             text-align: left;
             user-select: none;
+            overflow-y: hidden;
+            padding-right: 20px;
         }
 
-        .char { color: var(--text-dim); transition: color 0.1s; }
-        .char.correct { color: var(--text-bright); text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); }
-        .char.current { border-bottom: 3px solid var(--primary); animation: pulse 1s infinite; }
+        .char { color: var(--text-dim); transition: color 0.1s; display: inline-block; white-space: pre; }
+        .char.correct { color: var(--text-bright); text-shadow: 0 0 12px rgba(255, 255, 255, 0.4); }
+        .char.current { border-bottom: 3px solid var(--primary); animation: pulse 0.8s infinite; color: #fff; }
         .char.wrong { color: var(--error); text-shadow: 0 0 15px var(--error); }
 
         .glitch-overlay {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(255, 0, 85, 0.1);
+            background: rgba(255, 0, 85, 0.08);
             z-index: 10;
             pointer-events: none;
             opacity: 0;
         }
 
         @keyframes pulse {
-            0%, 100% { border-color: var(--primary); }
-            50% { border-color: #fff; }
+            0%, 100% { border-color: var(--primary); opacity: 1; }
+            50% { border-color: #fff; opacity: 0.5; }
         }
 
         #start-screen {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5,5,5,0.95);
-            z-index: 20;
+            background: rgba(5,5,5,0.98);
+            z-index: 100;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
+            transition: opacity 0.5s ease;
         }
 
-        h1 { font-size: 4rem; color: var(--primary); text-shadow: 0 0 30px var(--primary); margin: 0; }
+        h1 { font-size: 4.5rem; color: var(--primary); text-shadow: 0 0 30px var(--primary); margin: 0; letter-spacing: 10px; }
+        p { font-size: 1.2rem; opacity: 0.7; margin: 20px 0; letter-spacing: 2px; }
+        
+        .restart-btn {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 15px 40px;
+            font-family: 'Space Mono', monospace;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-top: 20px;
+            z-index: 101;
+        }
+
+        .restart-btn:hover {
+            background: var(--primary);
+            color: black;
+            box-shadow: 0 0 20px var(--primary);
+        }
+
         .hidden { display: none !important; }
     </style>
 </head>
@@ -98,8 +127,10 @@
     <div class="glitch-overlay" id="glitch"></div>
 
     <div id="start-screen">
-        <h1>LUMINA FLOW</h1>
-        <p>PRESS ANY KEY TO INITIALIZE SEQUENCE</p>
+        <h1 id="main-title">LUMINA FLOW</h1>
+        <p id="sub-title">INITIALIZE DATA STREAM</p>
+        <button class="restart-btn" id="start-btn">BEGIN SEQUENCE</button>
+        <p style="font-size: 0.8rem; margin-top: 40px;">(OR PRESS ANY KEY TO START)</p>
     </div>
 
     <div id="game-container">
@@ -111,156 +142,153 @@
     </div>
 
     <script>
-    // 1. MASSIVE WORD POOL
-    const WORDS = ["algorithm", "neural", "network", "cybernetics", "protocol", "interface", "velocity", "phosphor", "kinetic", "resonance", "system", "mainframe", "encrypted", "binary", "flux", "quantum", "synthesis", "void", "echo", "compile", "debug", "runtime", "stack", "overflow", "memory", "cache", "latency", "bandwidth", "entropy", "matrix", "vector", "node", "proxy", "firewall", "encryption", "payload", "throughput", "bandwidth", "compiler", "asynchronous", "callback", "middleware", "framework", "architecture", "microservice", "hypervisor", "container", "orchestration", "deployment", "repository", "abstraction", "polymorphism", "inheritance", "encapsulation", "recursion", "iteration", "concurrency", "parallelism", "serialization", "deadlock", "handshake", "packet", "segment", "datagram", "nanotechnology", "biometric", "cryptography", "decryption", "singularity", "mainframe", "subroutine", "telemetry", "firmware", "hardware", "software", "backdoor", "frontend", "backend", "fullstack", "database", "query", "syntax", "logic", "boolean", "integer", "string", "character", "floating", "double", "variable", "constant", "function", "method", "class", "object", "instance", "parameter", "argument", "pointer", "reference", "heap", "buffer"];
-    
-    const TEXT_LENGTH = 150; // 20x longer than original
+        // 1. MASSIVE DICTIONARY
+        const WORDS = ["algorithm", "neural", "network", "cybernetics", "protocol", "interface", "velocity", "phosphor", "kinetic", "resonance", "system", "mainframe", "encrypted", "binary", "flux", "quantum", "synthesis", "void", "echo", "compile", "debug", "runtime", "stack", "overflow", "memory", "cache", "latency", "bandwidth", "entropy", "matrix", "vector", "node", "proxy", "firewall", "encryption", "payload", "throughput", "compiler", "asynchronous", "callback", "middleware", "framework", "architecture", "microservice", "hypervisor", "container", "orchestration", "deployment", "repository", "abstraction", "polymorphism", "inheritance", "encapsulation", "recursion", "iteration", "concurrency", "parallelism", "serialization", "deadlock", "handshake", "packet", "segment", "datagram", "nanotechnology", "biometric", "cryptography", "decryption", "singularity", "subroutine", "telemetry", "firmware", "hardware", "software", "backdoor", "frontend", "backend", "fullstack", "database", "query", "syntax", "logic", "boolean", "integer", "string", "character", "floating", "double", "variable", "constant", "function", "method", "class", "object", "instance", "parameter", "argument", "pointer", "reference", "heap", "buffer", "scripting", "automation", "workflow", "distributed", "scalability", "authentication", "authorization", "token", "session", "request", "response", "endpoint", "socket", "websocket", "packet", "tunneling"];
+        
+        const TEXT_LENGTH = 100; // Significantly longer typing experience
 
-    // 2. AUDIO ENGINE
-    const SoundEngine = {
-        ctx: null, combo: 0,
-        scale: [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00],
-        async init() {
-            if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            if (this.ctx.state === 'suspended') await this.ctx.resume();
-        },
-        playClick() {
-            if (!this.ctx || this.ctx.state !== 'running') return;
-            const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
-            osc.frequency.setValueAtTime(this.scale[this.combo % this.scale.length], this.ctx.currentTime);
-            osc.type = 'sine'; gain.gain.setValueAtTime(0, this.ctx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.2, this.ctx.currentTime + 0.01);
-            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
-            osc.connect(gain); gain.connect(this.ctx.destination);
-            osc.start(); osc.stop(this.ctx.currentTime + 0.15); this.combo++;
-        },
-        playError() {
-            if (!this.ctx || this.ctx.state !== 'running') return; this.combo = 0;
-            const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
-            osc.frequency.value = 100; osc.type = 'sawtooth';
-            gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.2);
-            osc.connect(gain); gain.connect(this.ctx.destination);
-            osc.start(); osc.stop(this.ctx.currentTime + 0.2);
+        // 2. AUDIO
+        const SoundEngine = {
+            ctx: null, combo: 0,
+            scale: [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00],
+            async init() {
+                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                if (this.ctx.state === 'suspended') await this.ctx.resume();
+            },
+            playClick() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                osc.frequency.setValueAtTime(this.scale[this.combo % this.scale.length], this.ctx.currentTime);
+                osc.type = 'sine'; gain.gain.setValueAtTime(0, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.15, this.ctx.currentTime + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.15); this.combo++;
+            },
+            playError() {
+                if (!this.ctx) return; this.combo = 0;
+                const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                osc.frequency.value = 100; osc.type = 'sawtooth';
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.2);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.2);
+            }
+        };
+
+        // 3. CORE STATE
+        let state = { started: false, text: "", charIndex: 0, mistakes: 0, correctChars: 0, startTime: null };
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        const displayText = document.getElementById('display-text');
+        let width, height, particles = [];
+
+        function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y;
+                const angle = Math.random() * Math.PI * 2; const speed = Math.random() * 4 + 1;
+                this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+                this.life = 1.0; this.decay = Math.random() * 0.02 + 0.01; this.color = color;
+            }
+            update() { this.x += this.vx; this.y += this.vy; this.life -= this.decay; }
+            draw() { ctx.globalAlpha = this.life; ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, Math.PI * 2); ctx.fill(); }
         }
-    };
 
-    // 3. STATE & VISUALS
-    let state = { started: false, startTime: null, text: "", charIndex: 0, mistakes: 0, correctChars: 0 };
-    const canvas = document.getElementById('particleCanvas');
-    const ctx = canvas.getContext('2d');
-    let width, height, particles = [];
-
-    function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
-    window.addEventListener('resize', resize); resize();
-
-    class Particle {
-        constructor(x, y, color) {
-            this.x = x; this.y = y;
-            const angle = Math.random() * Math.PI * 2; const speed = Math.random() * 4 + 1;
-            this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
-            this.life = 1.0; this.decay = Math.random() * 0.02 + 0.01; this.color = color;
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            particles = particles.filter(p => p.life > 0);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animate);
         }
-        update() { this.x += this.vx; this.y += this.vy; this.life -= this.decay; }
-        draw() { ctx.globalAlpha = this.life; ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, Math.PI * 2); ctx.fill(); }
-    }
+        animate();
 
-    function animate() {
-        ctx.clearRect(0, 0, width, height);
-        particles = particles.filter(p => p.life > 0);
-        particles.forEach(p => { p.update(); p.draw(); });
-        requestAnimationFrame(animate);
-    }
-    animate();
+        // 4. GAMEFLOW
+        function renderText() {
+            displayText.innerHTML = '';
+            state.text.split('').forEach((char, i) => {
+                const span = document.createElement('span');
+                span.innerText = char;
+                span.className = 'char';
+                if (i === state.charIndex) span.className += ' current';
+                if (i < state.charIndex) span.className += ' correct';
+                displayText.appendChild(span);
+            });
+            // Auto-scroll
+            const current = document.querySelector('.current');
+            if (current) current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
 
-    // 4. GAME LOGIC
-    function renderText() {
-        const display = document.getElementById('display-text');
-        display.innerHTML = '';
-        state.text.split('').forEach((char, i) => {
-            const span = document.createElement('span');
-            span.innerText = char;
-            span.className = 'char' + (i === state.charIndex ? ' current' : '') + (i < state.charIndex ? ' correct' : '');
-            display.appendChild(span);
+        async function startNewRound() {
+            await SoundEngine.init();
+            // Reset Stats
+            state.charIndex = 0; state.mistakes = 0; state.correctChars = 0;
+            state.startTime = Date.now();
+            // Generate Random Words
+            state.text = Array.from({length: TEXT_LENGTH}, () => WORDS[Math.floor(Math.random() * WORDS.length)]).join(' ');
+            state.started = true;
+            
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('wpm-display').innerText = "WPM: 0";
+            document.getElementById('accuracy-display').innerText = "ACC: 100%";
+            renderText();
+        }
+
+        // Listener for the Start Button
+        document.getElementById('start-btn').addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent duplicate triggers
+            startNewRound();
         });
 
-        // AUTO-SCROLL LOGIC
-        const current = document.querySelector('.current');
-        if (current) {
-            current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    }
-
-    async function startNewRound() {
-        await SoundEngine.init();
-        // Complete Reset
-        state.charIndex = 0; 
-        state.mistakes = 0; 
-        state.correctChars = 0;
-        state.startTime = Date.now();
-        // Dynamic Word Selection
-        state.text = Array.from({length: TEXT_LENGTH}, () => WORDS[Math.floor(Math.random() * WORDS.length)]).join(' ');
-        state.started = true;
-        
-        document.getElementById('start-screen').classList.add('hidden');
-        document.getElementById('wpm-display').innerText = "WPM: 0";
-        document.getElementById('accuracy-display').innerText = "ACC: 100%";
-        renderText();
-    }
-
-    window.addEventListener('keydown', (e) => {
-        // Handle Restart on Start Screen
-        if (!state.started) {
-            if (e.key !== "Shift" && e.key !== "Alt" && e.key !== "Control") {
-                startNewRound();
+        window.addEventListener('keydown', (e) => {
+            // Handle Restart via Keypress
+            if (!state.started) {
+                if (!["Shift", "Control", "Alt", "Meta"].includes(e.key)) {
+                    startNewRound();
+                }
+                return;
             }
-            return;
-        }
 
-        // Ignore modifier keys
-        if (e.key.length !== 1 && e.key !== ' ') return;
-        e.preventDefault(); // Prevent spacebar from scrolling page
+            if (e.key.length !== 1 && e.key !== ' ') return;
+            e.preventDefault();
 
-        const charSpans = document.querySelectorAll('.char');
-        const targetChar = state.text[state.charIndex];
-        const rect = charSpans[state.charIndex].getBoundingClientRect();
+            const charSpans = document.querySelectorAll('.char');
+            const target = state.text[state.charIndex];
+            const rect = charSpans[state.charIndex].getBoundingClientRect();
 
-        if (e.key === targetChar) {
-            SoundEngine.playClick();
-            for(let i=0; i<8; i++) particles.push(new Particle(rect.left, rect.top, '#00f3ff'));
-            state.charIndex++; 
-            state.correctChars++;
-        } else {
-            SoundEngine.playError();
-            document.getElementById('glitch').style.opacity = 1;
-            setTimeout(() => document.getElementById('glitch').style.opacity = 0, 100);
-            for(let i=0; i<5; i++) particles.push(new Particle(rect.left, rect.top, '#ff0055'));
-            state.mistakes++;
-        }
+            if (e.key === target) {
+                SoundEngine.playClick();
+                for(let i=0; i<8; i++) particles.push(new Particle(rect.left, rect.top, '#00f3ff'));
+                state.charIndex++; state.correctChars++;
+            } else {
+                SoundEngine.playError();
+                document.getElementById('glitch').style.opacity = 1;
+                setTimeout(() => document.getElementById('glitch').style.opacity = 0, 100);
+                for(let i=0; i<5; i++) particles.push(new Particle(rect.left, rect.top, '#ff0055'));
+                state.mistakes++;
+            }
 
-        // Completion Check
-        if (state.charIndex >= state.text.length) {
-            state.started = false;
-            const finalWPM = document.getElementById('wpm-display').innerText;
-            const finalACC = document.getElementById('accuracy-display').innerText;
-            
-            document.getElementById('start-screen').classList.remove('hidden');
-            document.querySelector('#start-screen h1').innerText = "SEQUENCE TERMINATED";
-            document.querySelector('#start-screen p').innerHTML = `
-                <span style="color:var(--primary)">${finalWPM}</span> | 
-                <span style="color:var(--error)">${finalACC}</span><br><br>
-                PRESS ANY KEY TO RE-INITIALIZE DATA STREAM
-            `;
-        } else {
-            renderText();
-            const timeElapsed = (Date.now() - state.startTime) / 60000;
-            const wpm = Math.round((state.correctChars / 5) / timeElapsed) || 0;
-            const acc = Math.round(((state.charIndex - state.mistakes) / state.charIndex) * 100) || 100;
-            
-            document.getElementById('wpm-display').innerText = `WPM: ${wpm}`;
-            document.getElementById('accuracy-display').innerText = `ACC: ${acc}%`;
-        }
-    });
-</script>
+            if (state.charIndex >= state.text.length) {
+                // END OF GAME
+                state.started = false;
+                const finalWPM = document.getElementById('wpm-display').innerText;
+                const finalACC = document.getElementById('accuracy-display').innerText;
+                
+                document.getElementById('start-screen').classList.remove('hidden');
+                document.getElementById('main-title').innerText = "STREAM COMPLETE";
+                document.getElementById('sub-title').innerHTML = `${finalWPM} — ${finalACC}`;
+                document.getElementById('start-btn').innerText = "RE-INITIALIZE";
+            } else {
+                renderText();
+                const time = (Date.now() - state.startTime) / 60000;
+                const wpm = Math.round((state.correctChars / 5) / time) || 0;
+                const acc = Math.round(((state.charIndex - state.mistakes) / state.charIndex) * 100) || 100;
+                document.getElementById('wpm-display').innerText = `WPM: ${wpm}`;
+                document.getElementById('accuracy-display').innerText = `ACC: ${acc}%`;
+            }
+        });
+    </script>
 </body>
 </html>
