@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumina Flow - Typing Engine</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+        :root {
+            --bg: #050505;
+            --text-dim: #333;
+            --text-bright: #eee;
+            --primary: #00f3ff;
+            --error: #ff0055;
+            --glow: 0 0 20px var(--primary);
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg);
+            font-family: 'Space Mono', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+            cursor: none; /* Hide cursor for immersion */
+        }
+
+        /* The Canvas acts as the background layer for particles */
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* The UI Container */
+        #game-container {
+            position: relative;
+            z-index: 2;
+            width: 80%;
+            max-width: 900px;
+            text-align: center;
+        }
+
+        /* HUD */
+        #hud {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            opacity: 0.6;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* The Typing Area */
+        #display-text {
+            font-size: 2.5rem;
+            line-height: 1.5;
+            text-align: left;
+            user-select: none;
+            position: relative;
+        }
+
+        .char {
+            color: var(--text-dim);
+            transition: color 0.1s ease;
+            position: relative;
+        }
+
+        .char.correct {
+            color: var(--text-bright);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .char.current {
+            border-bottom: 3px solid var(--primary);
+            animation: pulse 1s infinite;
+        }
+
+        .char.wrong {
+            color: var(--error);
+            text-shadow: 0 0 15px var(--error);
+        }
+
+        /* Glitch Effect for Errors */
+        .glitch-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(255, 0, 85, 0.1);
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+            mix-blend-mode: overlay;
+        }
+
+        @keyframes pulse {
+            0% { border-color: var(--primary); box-shadow: 0 0 0 transparent; }
+            50% { border-color: #fff; box-shadow: var(--glow); }
+            100% { border-color: var(--primary); box-shadow: 0 0 0 transparent; }
+        }
+
+        /* Start Screen Overlay */
+        #start-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5,5,5,0.9);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        h1 { font-size: 4rem; margin: 0; text-shadow: 0 0 30px var(--primary); color: var(--primary); }
+        p { font-size: 1.2rem; margin-top: 1rem; opacity: 0.8; }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <canvas id="particleCanvas"></canvas>
+    <div class="glitch-overlay" id="glitch"></div>
+
+    <div id="start-screen">
+        <h1>LUMINA FLOW</h1>
+        <p>Press any key to initiate sequence</p>
+    </div>
+
+    <div id="game-container">
+        <div id="hud">
+            <span id="wpm-display">WPM: 0</span>
+            <span id="accuracy-display">ACC: 100%</span>
+        </div>
+        <div id="display-text"></div>
+    </div>
+
+    <script>
+        // --- GAME CONFIGURATION ---
+        const WORDS = [
+            "algorithm", "neural", "network", "cybernetics", "protocol", "interface", 
+            "velocity", "phosphor", "kinetic", "resonance", "system", "mainframe",
+            "encrypted", "binary", "flux", "quantum", "synthesis", "void", "echo",
+            "compile", "debug", "runtime", "stack", "overflow", "memory", "cache"
+        ];
+        
+        const TEXT_LENGTH = 30; // Words per round
+
+        // --- STATE MANAGEMENT ---
+        let state = {
+            started: false,
+            startTime: null,
+            text: "",
+            charIndex: 0,
+            mistakes: 0,
+            correctChars: 0
+        };
+
+        // --- DOM ELEMENTS ---
+        const displayText = document.getElementById('display-text');
+        const startScreen = document.getElementById('start-screen');
+        const glitchOverlay = document.getElementById('glitch');
+        const wpmDisplay = document.getElementById('wpm-display');
+        const accDisplay = document.getElementById('accuracy-display');
+        
+        // --- CANVAS SETUP ---
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let particles = [];
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- PARTICLE SYSTEM ---
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                // Random explosion direction
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 5 + 2;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.03 + 0.01;
+                this.color = color;
+                this.size = Math.random() * 3 + 1;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.1; // Gravity
+                this.vx *= 0.95; // Friction
+                this.life -= this.decay;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                ctx.restore();
+            }
+        }
+
+        function spawnParticles(x, y, count = 10, color = '#00f3ff') {
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw a subtle background grid
+            ctx.strokeStyle = 'rgba(0, 243, 255, 0.05)';
+            ctx.lineWidth = 1;
+            const gridSize = 50;
+            // Moving grid effect
+            const offset = (Date.now() / 50) % gridSize;
+            
+            for(let x = 0; x < width; x+=gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0); ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            
+            particles.forEach((p, index) => {
+                p.update();
+                p.draw(ctx);
+                if (p.life <= 0) particles.splice(index, 1);
+            });
+
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // --- GAME LOGIC ---
+
+        function generateText() {
+            let str = "";
+            for (let i = 0; i < TEXT_LENGTH; i++) {
+                str += WORDS[Math.floor(Math.random() * WORDS.length)] + " ";
+            }
+            return str.trim();
+        }
+
+        function renderText() {
+            displayText.innerHTML = '';
+            state.text.split('').forEach((char, index) => {
+                const span = document.createElement('span');
+                span.innerText = char;
+                span.className = 'char';
+                if (index === state.charIndex) span.classList.add('current');
+                displayText.appendChild(span);
+            });
+        }
+
+        function updateStats() {
+            if (!state.started) return;
+            
+            const timeElapsed = (Date.now() - state.startTime) / 1000 / 60; // in minutes
+            const wpm = Math.round((state.correctChars / 5) / timeElapsed) || 0;
+            const accuracy = Math.round(((state.charIndex - state.mistakes) / state.charIndex) * 100) || 100;
+
+            wpmDisplay.innerText = `WPM: ${wpm}`;
+            accDisplay.innerText = `ACC: ${accuracy}%`;
+        }
+
+        function triggerGlitch() {
+            glitchOverlay.style.opacity = 1;
+            setTimeout(() => {
+                glitchOverlay.style.opacity = 0;
+            }, 100);
+            
+            // Shake the container
+            const container = document.getElementById('game-container');
+            container.style.transform = `translate(${Math.random()*10 - 5}px, ${Math.random()*10 - 5}px)`;
+            setTimeout(() => container.style.transform = 'translate(0,0)', 50);
+        }
+
+        function initGame() {
+            state.text = generateText();
+            state.charIndex = 0;
+            state.mistakes = 0;
+            state.correctChars = 0;
+            state.started = true;
+            state.startTime = Date.now();
+            startScreen.classList.add('hidden');
+            renderText();
+        }
+
+        // --- INPUT HANDLING ---
+        window.addEventListener('keydown', (e) => {
+            if (!state.started) {
+                initGame();
+                return;
+            }
+
+            // Ignore modifier keys
+            if (e.key.length > 1 && e.key !== 'Backspace') return;
+
+            const charSpans = document.querySelectorAll('.char');
+            const currentChar = state.text[state.charIndex];
+
+            // Get position for particles
+            const rect = charSpans[state.charIndex].getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            if (e.key === currentChar) {
+                // Correct
+                charSpans[state.charIndex].classList.remove('current', 'wrong');
+                charSpans[state.charIndex].classList.add('correct');
+                
+                spawnParticles(centerX, centerY, 8, '#00f3ff'); // Blue explosion
+                
+                state.charIndex++;
+                state.correctChars++;
+                
+                if (state.charIndex < state.text.length) {
+                    charSpans[state.charIndex].classList.add('current');
+                    
+                    // Auto scroll if near end of line
+                    if (rect.top > window.innerHeight / 2 + 100) {
+                        // This would require more complex scroll logic, 
+                        // keeping it simple for the MVP
+                    }
+                } else {
+                    // Game Over / Restart (Simplified)
+                    initGame();
+                }
+            } else {
+                // Wrong
+                state.mistakes++;
+                charSpans[state.charIndex].classList.add('wrong');
+                triggerGlitch();
+                spawnParticles(centerX, centerY, 5, '#ff0055'); // Red explosion
+            }
+            
+            updateStats();
+        });
+
+    </script>
+</body>
+</html>
