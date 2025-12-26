@@ -1,149 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lumina Flow - Typing Engine</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
-
-        :root {
-            --bg: #050505;
-            --text-dim: #333;
-            --text-bright: #eee;
-            --primary: #00f3ff;
-            --error: #ff0055;
-            --glow: 0 0 20px var(--primary);
-        }
-
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: var(--bg);
-            font-family: 'Space Mono', monospace;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            color: white;
-            cursor: none; /* Hide cursor for immersion */
-        }
-
-        /* The Canvas acts as the background layer for particles */
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
-        }
-
-        /* The UI Container */
-        #game-container {
-            position: relative;
-            z-index: 2;
-            width: 80%;
-            max-width: 900px;
-            text-align: center;
-        }
-
-        /* HUD */
-        #hud {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 2rem;
-            font-size: 0.9rem;
-            opacity: 0.6;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        /* The Typing Area */
-        #display-text {
-            font-size: 2.5rem;
-            line-height: 1.5;
-            text-align: left;
-            user-select: none;
-            position: relative;
-        }
-
-        .char {
-            color: var(--text-dim);
-            transition: color 0.1s ease;
-            position: relative;
-        }
-
-        .char.correct {
-            color: var(--text-bright);
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-        }
-
-        .char.current {
-            border-bottom: 3px solid var(--primary);
-            animation: pulse 1s infinite;
-        }
-
-        .char.wrong {
-            color: var(--error);
-            text-shadow: 0 0 15px var(--error);
-        }
-
-        /* Glitch Effect for Errors */
-        .glitch-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(255, 0, 85, 0.1);
-            z-index: 10;
-            pointer-events: none;
-            opacity: 0;
-            mix-blend-mode: overlay;
-        }
-
-        @keyframes pulse {
-            0% { border-color: var(--primary); box-shadow: 0 0 0 transparent; }
-            50% { border-color: #fff; box-shadow: var(--glow); }
-            100% { border-color: var(--primary); box-shadow: 0 0 0 transparent; }
-        }
-
-        /* Start Screen Overlay */
-        #start-screen {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5,5,5,0.9);
-            z-index: 20;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-
-        h1 { font-size: 4rem; margin: 0; text-shadow: 0 0 30px var(--primary); color: var(--primary); }
-        p { font-size: 1.2rem; margin-top: 1rem; opacity: 0.8; }
-        
-        .hidden { display: none !important; }
-    </style>
-</head>
-<body>
-
-    <canvas id="particleCanvas"></canvas>
-    <div class="glitch-overlay" id="glitch"></div>
-
-    <div id="start-screen">
-        <h1>LUMINA FLOW</h1>
-        <p>Press any key to initiate sequence</p>
-    </div>
-
-    <div id="game-container">
-        <div id="hud">
-            <span id="wpm-display">WPM: 0</span>
-            <span id="accuracy-display">ACC: 100%</span>
-        </div>
-        <div id="display-text"></div>
-    </div>
-
-    <script>
+<script>
         // --- GAME CONFIGURATION ---
         const WORDS = [
             "algorithm", "neural", "network", "cybernetics", "protocol", "interface", 
@@ -152,7 +7,71 @@
             "compile", "debug", "runtime", "stack", "overflow", "memory", "cache"
         ];
         
-        const TEXT_LENGTH = 30; // Words per round
+        const TEXT_LENGTH = 30; 
+
+        // --- AUDIO ENGINE (The New Part) ---
+        const SoundEngine = {
+            ctx: null,
+            combo: 0,
+            // Pentatonic scale frequencies for a sci-fi musical feel
+            scale: [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00],
+
+            init() {
+                // Browsers require a user interaction to start audio. 
+                // We call this on the first keypress.
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            },
+
+            playClick() {
+                if (!this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                // Select note based on combo (looping through scale)
+                const noteIndex = this.combo % this.scale.length;
+                const baseFreq = this.scale[noteIndex];
+                
+                // Add a little randomization for organic feel
+                osc.frequency.setValueAtTime(baseFreq, this.ctx.currentTime);
+                osc.type = 'sine'; // Sine wave is smooth/glassy
+
+                // ADSR Envelope (Attack, Decay, Sustain, Release) - Short & percussive
+                gain.gain.setValueAtTime(0, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.3, this.ctx.currentTime + 0.01); // Attack
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.15); // Decay
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+
+                this.combo++;
+            },
+
+            playError() {
+                if (!this.ctx) return;
+                this.combo = 0; // Reset musical combo on error
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.frequency.value = 150;
+                osc.type = 'sawtooth'; // Harsh buzz sound
+
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+        };
 
         // --- STATE MANAGEMENT ---
         let state = {
@@ -190,7 +109,6 @@
             constructor(x, y, color) {
                 this.x = x;
                 this.y = y;
-                // Random explosion direction
                 const angle = Math.random() * Math.PI * 2;
                 const speed = Math.random() * 5 + 2;
                 this.vx = Math.cos(angle) * speed;
@@ -204,8 +122,8 @@
             update() {
                 this.x += this.vx;
                 this.y += this.vy;
-                this.vy += 0.1; // Gravity
-                this.vx *= 0.95; // Friction
+                this.vy += 0.1; 
+                this.vx *= 0.95; 
                 this.life -= this.decay;
             }
 
@@ -231,11 +149,10 @@
         function animateParticles() {
             ctx.clearRect(0, 0, width, height);
             
-            // Draw a subtle background grid
+            // Grid Effect
             ctx.strokeStyle = 'rgba(0, 243, 255, 0.05)';
             ctx.lineWidth = 1;
             const gridSize = 50;
-            // Moving grid effect
             const offset = (Date.now() / 50) % gridSize;
             
             for(let x = 0; x < width; x+=gridSize) {
@@ -277,8 +194,7 @@
 
         function updateStats() {
             if (!state.started) return;
-            
-            const timeElapsed = (Date.now() - state.startTime) / 1000 / 60; // in minutes
+            const timeElapsed = (Date.now() - state.startTime) / 1000 / 60; 
             const wpm = Math.round((state.correctChars / 5) / timeElapsed) || 0;
             const accuracy = Math.round(((state.charIndex - state.mistakes) / state.charIndex) * 100) || 100;
 
@@ -288,11 +204,7 @@
 
         function triggerGlitch() {
             glitchOverlay.style.opacity = 1;
-            setTimeout(() => {
-                glitchOverlay.style.opacity = 0;
-            }, 100);
-            
-            // Shake the container
+            setTimeout(() => { glitchOverlay.style.opacity = 0; }, 100);
             const container = document.getElementById('game-container');
             container.style.transform = `translate(${Math.random()*10 - 5}px, ${Math.random()*10 - 5}px)`;
             setTimeout(() => container.style.transform = 'translate(0,0)', 50);
@@ -307,59 +219,52 @@
             state.startTime = Date.now();
             startScreen.classList.add('hidden');
             renderText();
+            
+            // Initialize Audio Context on start
+            SoundEngine.init();
         }
 
         // --- INPUT HANDLING ---
         window.addEventListener('keydown', (e) => {
+            // Start game on first keypress
             if (!state.started) {
                 initGame();
                 return;
             }
 
-            // Ignore modifier keys
             if (e.key.length > 1 && e.key !== 'Backspace') return;
 
             const charSpans = document.querySelectorAll('.char');
             const currentChar = state.text[state.charIndex];
-
-            // Get position for particles
             const rect = charSpans[state.charIndex].getBoundingClientRect();
             const centerX = rect.left + rect.width / 2;
             const centerY = rect.top + rect.height / 2;
 
             if (e.key === currentChar) {
-                // Correct
+                // CORRECT
                 charSpans[state.charIndex].classList.remove('current', 'wrong');
                 charSpans[state.charIndex].classList.add('correct');
                 
-                spawnParticles(centerX, centerY, 8, '#00f3ff'); // Blue explosion
+                spawnParticles(centerX, centerY, 8, '#00f3ff');
+                SoundEngine.playClick(); // <--- Play musical note
                 
                 state.charIndex++;
                 state.correctChars++;
                 
                 if (state.charIndex < state.text.length) {
                     charSpans[state.charIndex].classList.add('current');
-                    
-                    // Auto scroll if near end of line
-                    if (rect.top > window.innerHeight / 2 + 100) {
-                        // This would require more complex scroll logic, 
-                        // keeping it simple for the MVP
-                    }
                 } else {
-                    // Game Over / Restart (Simplified)
                     initGame();
                 }
             } else {
-                // Wrong
+                // WRONG
                 state.mistakes++;
                 charSpans[state.charIndex].classList.add('wrong');
                 triggerGlitch();
-                spawnParticles(centerX, centerY, 5, '#ff0055'); // Red explosion
+                spawnParticles(centerX, centerY, 5, '#ff0055');
+                SoundEngine.playError(); // <--- Play error buzz
             }
             
             updateStats();
         });
-
     </script>
-</body>
-</html>
