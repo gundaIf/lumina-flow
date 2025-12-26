@@ -111,11 +111,12 @@
     </div>
 
     <script>
-    // 1. Expanded Word Pool for Variety
-    const WORDS = ["algorithm", "neural", "network", "cybernetics", "protocol", "interface", "velocity", "phosphor", "kinetic", "resonance", "system", "mainframe", "encrypted", "binary", "flux", "quantum", "synthesis", "void", "echo", "compile", "debug", "runtime", "stack", "overflow", "memory", "cache", "latency", "bandwidth", "entropy", "matrix", "vector", "node", "proxy", "firewall", "encryption", "payload"];
-    const TEXT_LENGTH = 15; // Words per session
+    // 1. MASSIVE WORD POOL
+    const WORDS = ["algorithm", "neural", "network", "cybernetics", "protocol", "interface", "velocity", "phosphor", "kinetic", "resonance", "system", "mainframe", "encrypted", "binary", "flux", "quantum", "synthesis", "void", "echo", "compile", "debug", "runtime", "stack", "overflow", "memory", "cache", "latency", "bandwidth", "entropy", "matrix", "vector", "node", "proxy", "firewall", "encryption", "payload", "throughput", "bandwidth", "compiler", "asynchronous", "callback", "middleware", "framework", "architecture", "microservice", "hypervisor", "container", "orchestration", "deployment", "repository", "abstraction", "polymorphism", "inheritance", "encapsulation", "recursion", "iteration", "concurrency", "parallelism", "serialization", "deadlock", "handshake", "packet", "segment", "datagram", "nanotechnology", "biometric", "cryptography", "decryption", "singularity", "mainframe", "subroutine", "telemetry", "firmware", "hardware", "software", "backdoor", "frontend", "backend", "fullstack", "database", "query", "syntax", "logic", "boolean", "integer", "string", "character", "floating", "double", "variable", "constant", "function", "method", "class", "object", "instance", "parameter", "argument", "pointer", "reference", "heap", "buffer"];
+    
+    const TEXT_LENGTH = 150; // 20x longer than original
 
-    // 2. Audio Engine
+    // 2. AUDIO ENGINE
     const SoundEngine = {
         ctx: null, combo: 0,
         scale: [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00],
@@ -144,7 +145,7 @@
         }
     };
 
-    // 3. State & Visuals
+    // 3. STATE & VISUALS
     let state = { started: false, startTime: null, text: "", charIndex: 0, mistakes: 0, correctChars: 0 };
     const canvas = document.getElementById('particleCanvas');
     const ctx = canvas.getContext('2d');
@@ -172,7 +173,7 @@
     }
     animate();
 
-    // 4. Game Logic
+    // 4. GAME LOGIC
     function renderText() {
         const display = document.getElementById('display-text');
         display.innerHTML = '';
@@ -182,31 +183,53 @@
             span.className = 'char' + (i === state.charIndex ? ' current' : '') + (i < state.charIndex ? ' correct' : '');
             display.appendChild(span);
         });
+
+        // AUTO-SCROLL LOGIC
+        const current = document.querySelector('.current');
+        if (current) {
+            current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     }
 
     async function startNewRound() {
         await SoundEngine.init();
-        // Reset State
-        state.charIndex = 0; state.mistakes = 0; state.correctChars = 0;
+        // Complete Reset
+        state.charIndex = 0; 
+        state.mistakes = 0; 
+        state.correctChars = 0;
         state.startTime = Date.now();
-        // Generate Fresh Random Text
+        // Dynamic Word Selection
         state.text = Array.from({length: TEXT_LENGTH}, () => WORDS[Math.floor(Math.random() * WORDS.length)]).join(' ');
         state.started = true;
+        
         document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('wpm-display').innerText = "WPM: 0";
+        document.getElementById('accuracy-display').innerText = "ACC: 100%";
         renderText();
     }
 
     window.addEventListener('keydown', (e) => {
-        if (!state.started) { startNewRound(); return; }
+        // Handle Restart on Start Screen
+        if (!state.started) {
+            if (e.key !== "Shift" && e.key !== "Alt" && e.key !== "Control") {
+                startNewRound();
+            }
+            return;
+        }
+
+        // Ignore modifier keys
         if (e.key.length !== 1 && e.key !== ' ') return;
+        e.preventDefault(); // Prevent spacebar from scrolling page
 
         const charSpans = document.querySelectorAll('.char');
+        const targetChar = state.text[state.charIndex];
         const rect = charSpans[state.charIndex].getBoundingClientRect();
 
-        if (e.key === state.text[state.charIndex]) {
+        if (e.key === targetChar) {
             SoundEngine.playClick();
             for(let i=0; i<8; i++) particles.push(new Particle(rect.left, rect.top, '#00f3ff'));
-            state.charIndex++; state.correctChars++;
+            state.charIndex++; 
+            state.correctChars++;
         } else {
             SoundEngine.playError();
             document.getElementById('glitch').style.opacity = 1;
@@ -215,21 +238,29 @@
             state.mistakes++;
         }
 
-        // Check for Round Completion
+        // Completion Check
         if (state.charIndex >= state.text.length) {
             state.started = false;
             const finalWPM = document.getElementById('wpm-display').innerText;
             const finalACC = document.getElementById('accuracy-display').innerText;
+            
             document.getElementById('start-screen').classList.remove('hidden');
-            document.querySelector('#start-screen h1').innerText = "SEQUENCE COMPLETE";
-            document.querySelector('#start-screen p').innerHTML = `${finalWPM} | ${finalACC}<br><br>PRESS ANY KEY TO RE-INITIALIZE`;
+            document.querySelector('#start-screen h1').innerText = "SEQUENCE TERMINATED";
+            document.querySelector('#start-screen p').innerHTML = `
+                <span style="color:var(--primary)">${finalWPM}</span> | 
+                <span style="color:var(--error)">${finalACC}</span><br><br>
+                PRESS ANY KEY TO RE-INITIALIZE DATA STREAM
+            `;
         } else {
             renderText();
-            const time = (Date.now() - state.startTime) / 60000;
-            document.getElementById('wpm-display').innerText = `WPM: ${Math.round((state.correctChars/5)/time) || 0}`;
-            document.getElementById('accuracy-display').innerText = `ACC: ${Math.round(((state.charIndex - state.mistakes)/state.charIndex)*100) || 100}%`;
+            const timeElapsed = (Date.now() - state.startTime) / 60000;
+            const wpm = Math.round((state.correctChars / 5) / timeElapsed) || 0;
+            const acc = Math.round(((state.charIndex - state.mistakes) / state.charIndex) * 100) || 100;
+            
+            document.getElementById('wpm-display').innerText = `WPM: ${wpm}`;
+            document.getElementById('accuracy-display').innerText = `ACC: ${acc}%`;
         }
     });
-    </script>
+</script>
 </body>
 </html>
