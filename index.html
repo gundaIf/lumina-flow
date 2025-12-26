@@ -111,143 +111,125 @@
     </div>
 
     <script>
-        // 1. Configuration
-        const WORDS = ["algorithm", "neural", "network", "cybernetics", "protocol", "interface", "velocity", "phosphor", "kinetic", "resonance", "system", "mainframe", "encrypted", "binary", "flux", "quantum", "synthesis", "void", "echo", "compile", "debug", "runtime", "stack", "overflow", "memory", "cache"];
-        const TEXT_LENGTH = 20;
+    // 1. Expanded Word Pool for Variety
+    const WORDS = ["algorithm", "neural", "network", "cybernetics", "protocol", "interface", "velocity", "phosphor", "kinetic", "resonance", "system", "mainframe", "encrypted", "binary", "flux", "quantum", "synthesis", "void", "echo", "compile", "debug", "runtime", "stack", "overflow", "memory", "cache", "latency", "bandwidth", "entropy", "matrix", "vector", "node", "proxy", "firewall", "encryption", "payload"];
+    const TEXT_LENGTH = 15; // Words per session
 
-        // 2. Audio Engine
-        const SoundEngine = {
-            ctx: null,
-            combo: 0,
-            scale: [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00],
-            async init() {
-                if (!this.ctx) {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                if (this.ctx.state === 'suspended') await this.ctx.resume();
-            },
-            playClick() {
-                if (!this.ctx || this.ctx.state !== 'running') return;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.frequency.setValueAtTime(this.scale[this.combo % this.scale.length], this.ctx.currentTime);
-                osc.type = 'sine';
-                gain.gain.setValueAtTime(0, this.ctx.currentTime);
-                gain.gain.linearRampToValueAtTime(0.2, this.ctx.currentTime + 0.01);
-                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
-                osc.connect(gain); gain.connect(this.ctx.destination);
-                osc.start(); osc.stop(this.ctx.currentTime + 0.15);
-                this.combo++;
-            },
-            playError() {
-                if (!this.ctx || this.ctx.state !== 'running') return;
-                this.combo = 0;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.frequency.value = 100; osc.type = 'sawtooth';
-                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.2);
-                osc.connect(gain); gain.connect(this.ctx.destination);
-                osc.start(); osc.stop(this.ctx.currentTime + 0.2);
-            }
-        };
-
-        // 3. Game State
-        let state = { started: false, startTime: null, text: "", charIndex: 0, mistakes: 0, correctChars: 0 };
-
-        // 4. Visuals (Canvas & Particles)
-        const canvas = document.getElementById('particleCanvas');
-        const ctx = canvas.getContext('2d');
-        let width, height, particles = [];
-
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
+    // 2. Audio Engine
+    const SoundEngine = {
+        ctx: null, combo: 0,
+        scale: [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00],
+        async init() {
+            if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            if (this.ctx.state === 'suspended') await this.ctx.resume();
+        },
+        playClick() {
+            if (!this.ctx || this.ctx.state !== 'running') return;
+            const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+            osc.frequency.setValueAtTime(this.scale[this.combo % this.scale.length], this.ctx.currentTime);
+            osc.type = 'sine'; gain.gain.setValueAtTime(0, this.ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.2, this.ctx.currentTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            osc.start(); osc.stop(this.ctx.currentTime + 0.15); this.combo++;
+        },
+        playError() {
+            if (!this.ctx || this.ctx.state !== 'running') return; this.combo = 0;
+            const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+            osc.frequency.value = 100; osc.type = 'sawtooth';
+            gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.2);
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            osc.start(); osc.stop(this.ctx.currentTime + 0.2);
         }
-        window.addEventListener('resize', resize);
-        resize();
+    };
 
-        class Particle {
-            constructor(x, y, color) {
-                this.x = x; this.y = y;
-                const angle = Math.random() * Math.PI * 2;
-                const speed = Math.random() * 4 + 1;
-                this.vx = Math.cos(angle) * speed;
-                this.vy = Math.sin(angle) * speed;
-                this.life = 1.0;
-                this.decay = Math.random() * 0.02 + 0.01;
-                this.color = color;
-            }
-            update() { this.x += this.vx; this.y += this.vy; this.life -= this.decay; }
-            draw() {
-                ctx.globalAlpha = this.life;
-                ctx.fillStyle = this.color;
-                ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, Math.PI * 2); ctx.fill();
-            }
+    // 3. State & Visuals
+    let state = { started: false, startTime: null, text: "", charIndex: 0, mistakes: 0, correctChars: 0 };
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    let width, height, particles = [];
+
+    function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resize); resize();
+
+    class Particle {
+        constructor(x, y, color) {
+            this.x = x; this.y = y;
+            const angle = Math.random() * Math.PI * 2; const speed = Math.random() * 4 + 1;
+            this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+            this.life = 1.0; this.decay = Math.random() * 0.02 + 0.01; this.color = color;
         }
+        update() { this.x += this.vx; this.y += this.vy; this.life -= this.decay; }
+        draw() { ctx.globalAlpha = this.life; ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, Math.PI * 2); ctx.fill(); }
+    }
 
-        function animate() {
-            ctx.clearRect(0, 0, width, height);
-            particles = particles.filter(p => p.life > 0);
-            particles.forEach(p => { p.update(); p.draw(); });
-            requestAnimationFrame(animate);
-        }
-        animate();
+    function animate() {
+        ctx.clearRect(0, 0, width, height);
+        particles = particles.filter(p => p.life > 0);
+        particles.forEach(p => { p.update(); p.draw(); });
+        requestAnimationFrame(animate);
+    }
+    animate();
 
-        // 5. Game Logic
-        function renderText() {
-            const display = document.getElementById('display-text');
-            display.innerHTML = '';
-            state.text.split('').forEach((char, i) => {
-                const span = document.createElement('span');
-                span.innerText = char;
-                span.className = 'char';
-                if (i === state.charIndex) span.classList.add('current');
-                if (i < state.charIndex) span.classList.add('correct');
-                display.appendChild(span);
-            });
-        }
-
-        async function start() {
-            await SoundEngine.init();
-            state.text = Array.from({length: TEXT_LENGTH}, () => WORDS[Math.floor(Math.random() * WORDS.length)]).join(' ');
-            state.started = true;
-            state.startTime = Date.now();
-            document.getElementById('start-screen').classList.add('hidden');
-            renderText();
-        }
-
-        window.addEventListener('keydown', (e) => {
-            if (!state.started) { start(); return; }
-            if (e.key.length !== 1 && e.key !== ' ') return;
-
-            const charSpans = document.querySelectorAll('.char');
-            const rect = charSpans[state.charIndex].getBoundingClientRect();
-
-            if (e.key === state.text[state.charIndex]) {
-                SoundEngine.playClick();
-                for(let i=0; i<8; i++) particles.push(new Particle(rect.left, rect.top, '#00f3ff'));
-                state.charIndex++;
-                state.correctChars++;
-            } else {
-                SoundEngine.playError();
-                document.getElementById('glitch').style.opacity = 1;
-                setTimeout(() => document.getElementById('glitch').style.opacity = 0, 100);
-                for(let i=0; i<5; i++) particles.push(new Particle(rect.left, rect.top, '#ff0055'));
-                state.mistakes++;
-            }
-
-            if (state.charIndex >= state.text.length) {
-                state.started = false;
-                document.getElementById('start-screen').classList.remove('hidden');
-                document.querySelector('#start-screen p').innerText = `FINISH! WPM: ${document.getElementById('wpm-display').innerText}`;
-            } else {
-                renderText();
-                const time = (Date.now() - state.startTime) / 60000;
-                document.getElementById('wpm-display').innerText = `WPM: ${Math.round((state.correctChars/5)/time)}`;
-                document.getElementById('accuracy-display').innerText = `ACC: ${Math.round(((state.charIndex - state.mistakes)/state.charIndex)*100)}%`;
-            }
+    // 4. Game Logic
+    function renderText() {
+        const display = document.getElementById('display-text');
+        display.innerHTML = '';
+        state.text.split('').forEach((char, i) => {
+            const span = document.createElement('span');
+            span.innerText = char;
+            span.className = 'char' + (i === state.charIndex ? ' current' : '') + (i < state.charIndex ? ' correct' : '');
+            display.appendChild(span);
         });
+    }
+
+    async function startNewRound() {
+        await SoundEngine.init();
+        // Reset State
+        state.charIndex = 0; state.mistakes = 0; state.correctChars = 0;
+        state.startTime = Date.now();
+        // Generate Fresh Random Text
+        state.text = Array.from({length: TEXT_LENGTH}, () => WORDS[Math.floor(Math.random() * WORDS.length)]).join(' ');
+        state.started = true;
+        document.getElementById('start-screen').classList.add('hidden');
+        renderText();
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (!state.started) { startNewRound(); return; }
+        if (e.key.length !== 1 && e.key !== ' ') return;
+
+        const charSpans = document.querySelectorAll('.char');
+        const rect = charSpans[state.charIndex].getBoundingClientRect();
+
+        if (e.key === state.text[state.charIndex]) {
+            SoundEngine.playClick();
+            for(let i=0; i<8; i++) particles.push(new Particle(rect.left, rect.top, '#00f3ff'));
+            state.charIndex++; state.correctChars++;
+        } else {
+            SoundEngine.playError();
+            document.getElementById('glitch').style.opacity = 1;
+            setTimeout(() => document.getElementById('glitch').style.opacity = 0, 100);
+            for(let i=0; i<5; i++) particles.push(new Particle(rect.left, rect.top, '#ff0055'));
+            state.mistakes++;
+        }
+
+        // Check for Round Completion
+        if (state.charIndex >= state.text.length) {
+            state.started = false;
+            const finalWPM = document.getElementById('wpm-display').innerText;
+            const finalACC = document.getElementById('accuracy-display').innerText;
+            document.getElementById('start-screen').classList.remove('hidden');
+            document.querySelector('#start-screen h1').innerText = "SEQUENCE COMPLETE";
+            document.querySelector('#start-screen p').innerHTML = `${finalWPM} | ${finalACC}<br><br>PRESS ANY KEY TO RE-INITIALIZE`;
+        } else {
+            renderText();
+            const time = (Date.now() - state.startTime) / 60000;
+            document.getElementById('wpm-display').innerText = `WPM: ${Math.round((state.correctChars/5)/time) || 0}`;
+            document.getElementById('accuracy-display').innerText = `ACC: ${Math.round(((state.charIndex - state.mistakes)/state.charIndex)*100) || 100}%`;
+        }
+    });
     </script>
 </body>
 </html>
