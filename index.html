@@ -1,168 +1,253 @@
-<script>
-       <script>
-    // --- CONFIGURATION ---
-    const WORDS = ["algorithm", "neural", "network", "cybernetics", "protocol", "interface", "velocity", "phosphor", "kinetic", "resonance", "system", "mainframe", "encrypted", "binary", "flux", "quantum", "synthesis", "void", "echo", "compile", "debug", "runtime", "stack", "overflow", "memory", "cache"];
-    const TEXT_LENGTH = 30;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumina Flow | Kinetic Typing</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
 
-    // --- AUDIO ENGINE ---
-    const SoundEngine = {
-        ctx: null,
-        combo: 0,
-        scale: [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00],
-        
-        async init() {
-            if (!this.ctx) {
-                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        :root {
+            --bg: #050505;
+            --text-dim: #333;
+            --text-bright: #eee;
+            --primary: #00f3ff;
+            --error: #ff0055;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg);
+            font-family: 'Space Mono', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0; left: 0;
+            z-index: 1;
+        }
+
+        #game-container {
+            position: relative;
+            z-index: 2;
+            width: 80%;
+            max-width: 900px;
+            text-align: center;
+        }
+
+        #hud {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            opacity: 0.6;
+            letter-spacing: 2px;
+        }
+
+        #display-text {
+            font-size: 2.5rem;
+            line-height: 1.5;
+            text-align: left;
+            user-select: none;
+        }
+
+        .char { color: var(--text-dim); transition: color 0.1s; }
+        .char.correct { color: var(--text-bright); text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); }
+        .char.current { border-bottom: 3px solid var(--primary); animation: pulse 1s infinite; }
+        .char.wrong { color: var(--error); text-shadow: 0 0 15px var(--error); }
+
+        .glitch-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(255, 0, 85, 0.1);
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        @keyframes pulse {
+            0%, 100% { border-color: var(--primary); }
+            50% { border-color: #fff; }
+        }
+
+        #start-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5,5,5,0.95);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        h1 { font-size: 4rem; color: var(--primary); text-shadow: 0 0 30px var(--primary); margin: 0; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <canvas id="particleCanvas"></canvas>
+    <div class="glitch-overlay" id="glitch"></div>
+
+    <div id="start-screen">
+        <h1>LUMINA FLOW</h1>
+        <p>PRESS ANY KEY TO INITIALIZE SEQUENCE</p>
+    </div>
+
+    <div id="game-container">
+        <div id="hud">
+            <span id="wpm-display">WPM: 0</span>
+            <span id="accuracy-display">ACC: 100%</span>
+        </div>
+        <div id="display-text"></div>
+    </div>
+
+    <script>
+        // 1. Configuration
+        const WORDS = ["algorithm", "neural", "network", "cybernetics", "protocol", "interface", "velocity", "phosphor", "kinetic", "resonance", "system", "mainframe", "encrypted", "binary", "flux", "quantum", "synthesis", "void", "echo", "compile", "debug", "runtime", "stack", "overflow", "memory", "cache"];
+        const TEXT_LENGTH = 20;
+
+        // 2. Audio Engine
+        const SoundEngine = {
+            ctx: null,
+            combo: 0,
+            scale: [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00],
+            async init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') await this.ctx.resume();
+            },
+            playClick() {
+                if (!this.ctx || this.ctx.state !== 'running') return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.frequency.setValueAtTime(this.scale[this.combo % this.scale.length], this.ctx.currentTime);
+                osc.type = 'sine';
+                gain.gain.setValueAtTime(0, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.2, this.ctx.currentTime + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.15);
+                this.combo++;
+            },
+            playError() {
+                if (!this.ctx || this.ctx.state !== 'running') return;
+                this.combo = 0;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.frequency.value = 100; osc.type = 'sawtooth';
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.2);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.2);
             }
-            if (this.ctx.state === 'suspended') {
-                await this.ctx.resume();
+        };
+
+        // 3. Game State
+        let state = { started: false, startTime: null, text: "", charIndex: 0, mistakes: 0, correctChars: 0 };
+
+        // 4. Visuals (Canvas & Particles)
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, particles = [];
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 4 + 1;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.02 + 0.01;
+                this.color = color;
             }
-        },
-
-        playClick() {
-            if (!this.ctx || this.ctx.state !== 'running') return;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            const noteIndex = this.combo % this.scale.length;
-            osc.frequency.setValueAtTime(this.scale[noteIndex], this.ctx.currentTime);
-            osc.type = 'sine';
-            gain.gain.setValueAtTime(0, this.ctx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.2, this.ctx.currentTime + 0.01);
-            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.start();
-            osc.stop(this.ctx.currentTime + 0.15);
-            this.combo++;
-        },
-
-        playError() {
-            if (!this.ctx || this.ctx.state !== 'running') return;
-            this.combo = 0;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.frequency.value = 100;
-            osc.type = 'sawtooth';
-            gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.2);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.start();
-            osc.stop(this.ctx.currentTime + 0.2);
+            update() { this.x += this.vx; this.y += this.vy; this.life -= this.decay; }
+            draw() {
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, Math.PI * 2); ctx.fill();
+            }
         }
-    };
 
-    // --- STATE ---
-    let state = { started: false, startTime: null, text: "", charIndex: 0, mistakes: 0, correctChars: 0 };
-
-    // --- DOM & CANVAS ---
-    const displayText = document.getElementById('display-text');
-    const startScreen = document.getElementById('start-screen');
-    const glitchOverlay = document.getElementById('glitch');
-    const wpmDisplay = document.getElementById('wpm-display');
-    const accDisplay = document.getElementById('accuracy-display');
-    const canvas = document.getElementById('particleCanvas');
-    const ctx = canvas.getContext('2d');
-    let width, height, particles = [];
-
-    function resize() {
-        width = canvas.width = window.innerWidth;
-        height = canvas.height = window.innerHeight;
-    }
-    window.addEventListener('resize', resize);
-    resize();
-
-    // --- PARTICLES ---
-    class Particle {
-        constructor(x, y, color) {
-            this.x = x; this.y = y;
-            const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 5 + 2;
-            this.vx = Math.cos(angle) * speed;
-            this.vy = Math.sin(angle) * speed;
-            this.life = 1.0;
-            this.decay = Math.random() * 0.03 + 0.01;
-            this.color = color;
-            this.size = Math.random() * 3 + 1;
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            particles = particles.filter(p => p.life > 0);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animate);
         }
-        update() { this.x += this.vx; this.y += this.vy; this.vy += 0.1; this.vx *= 0.95; this.life -= this.decay; }
-        draw(ctx) {
-            ctx.save(); ctx.globalAlpha = this.life; ctx.fillStyle = this.color;
-            ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
-            ctx.shadowBlur = 15; ctx.shadowColor = this.color; ctx.restore();
+        animate();
+
+        // 5. Game Logic
+        function renderText() {
+            const display = document.getElementById('display-text');
+            display.innerHTML = '';
+            state.text.split('').forEach((char, i) => {
+                const span = document.createElement('span');
+                span.innerText = char;
+                span.className = 'char';
+                if (i === state.charIndex) span.classList.add('current');
+                if (i < state.charIndex) span.classList.add('correct');
+                display.appendChild(span);
+            });
         }
-    }
 
-    function spawnParticles(x, y, count = 10, color = '#00f3ff') {
-        for (let i = 0; i < count; i++) particles.push(new Particle(x, y, color));
-    }
+        async function start() {
+            await SoundEngine.init();
+            state.text = Array.from({length: TEXT_LENGTH}, () => WORDS[Math.floor(Math.random() * WORDS.length)]).join(' ');
+            state.started = true;
+            state.startTime = Date.now();
+            document.getElementById('start-screen').classList.add('hidden');
+            renderText();
+        }
 
-    function animate() {
-        ctx.clearRect(0, 0, width, height);
-        particles.forEach((p, i) => {
-            p.update(); p.draw(ctx);
-            if (p.life <= 0) particles.splice(i, 1);
+        window.addEventListener('keydown', (e) => {
+            if (!state.started) { start(); return; }
+            if (e.key.length !== 1 && e.key !== ' ') return;
+
+            const charSpans = document.querySelectorAll('.char');
+            const rect = charSpans[state.charIndex].getBoundingClientRect();
+
+            if (e.key === state.text[state.charIndex]) {
+                SoundEngine.playClick();
+                for(let i=0; i<8; i++) particles.push(new Particle(rect.left, rect.top, '#00f3ff'));
+                state.charIndex++;
+                state.correctChars++;
+            } else {
+                SoundEngine.playError();
+                document.getElementById('glitch').style.opacity = 1;
+                setTimeout(() => document.getElementById('glitch').style.opacity = 0, 100);
+                for(let i=0; i<5; i++) particles.push(new Particle(rect.left, rect.top, '#ff0055'));
+                state.mistakes++;
+            }
+
+            if (state.charIndex >= state.text.length) {
+                state.started = false;
+                document.getElementById('start-screen').classList.remove('hidden');
+                document.querySelector('#start-screen p').innerText = `FINISH! WPM: ${document.getElementById('wpm-display').innerText}`;
+            } else {
+                renderText();
+                const time = (Date.now() - state.startTime) / 60000;
+                document.getElementById('wpm-display').innerText = `WPM: ${Math.round((state.correctChars/5)/time)}`;
+                document.getElementById('accuracy-display').innerText = `ACC: ${Math.round(((state.charIndex - state.mistakes)/state.charIndex)*100)}%`;
+            }
         });
-        requestAnimationFrame(animate);
-    }
-    animate();
-
-    // --- LOGIC ---
-    function generateText() {
-        let str = "";
-        for (let i = 0; i < TEXT_LENGTH; i++) str += WORDS[Math.floor(Math.random() * WORDS.length)] + " ";
-        return str.trim();
-    }
-
-    function renderText() {
-        displayText.innerHTML = '';
-        state.text.split('').forEach((char, index) => {
-            const span = document.createElement('span');
-            span.innerText = char;
-            span.className = 'char' + (index === state.charIndex ? ' current' : '');
-            displayText.appendChild(span);
-        });
-    }
-
-    async function initGame() {
-        await SoundEngine.init();
-        state.text = generateText();
-        state.charIndex = 0; state.mistakes = 0; state.correctChars = 0;
-        state.started = true; state.startTime = Date.now();
-        startScreen.classList.add('hidden');
-        renderText();
-    }
-
-    window.addEventListener('keydown', (e) => {
-        if (!state.started) { initGame(); return; }
-        if (e.key.length > 1 && e.key !== 'Backspace') return;
-
-        const charSpans = document.querySelectorAll('.char');
-        const currentChar = state.text[state.charIndex];
-        const rect = charSpans[state.charIndex].getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-
-        if (e.key === currentChar) {
-            charSpans[state.charIndex].classList.add('correct');
-            spawnParticles(centerX, centerY, 8, '#00f3ff');
-            SoundEngine.playClick();
-            state.charIndex++; state.correctChars++;
-            if (state.charIndex < state.text.length) {
-                charSpans[state.charIndex].classList.add('current');
-            } else { initGame(); }
-        } else {
-            state.mistakes++;
-            charSpans[state.charIndex].classList.add('wrong');
-            glitchOverlay.style.opacity = 1;
-            setTimeout(() => glitchOverlay.style.opacity = 0, 100);
-            spawnParticles(centerX, centerY, 5, '#ff0055');
-            SoundEngine.playError();
-        }
-        
-        const timeElapsed = (Date.now() - state.startTime) / 60000;
-        wpmDisplay.innerText = `WPM: ${Math.round((state.correctChars / 5) / timeElapsed) || 0}`;
-        accDisplay.innerText = `ACC: ${Math.round(((state.charIndex - state.mistakes) / state.charIndex) * 100) || 100}%`;
-    });
-</script>
     </script>
+</body>
+</html>
