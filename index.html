@@ -1,294 +1,630 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="phosphor">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lumina Flow | Kinetic Typing</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
-
-        :root {
-            --bg: #050505;
-            --text-dim: #333;
-            --text-bright: #eee;
-            --primary: #00f3ff;
-            --error: #ff0055;
-        }
-
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: var(--bg);
-            font-family: 'Space Mono', monospace;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            color: white;
-        }
-
-        canvas {
-            position: absolute;
-            top: 0; left: 0;
-            z-index: 1;
-        }
-
-        #game-container {
-            position: relative;
-            z-index: 2;
-            width: 85%;
-            max-width: 1000px;
-            height: 60vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #hud {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 2rem;
-            font-size: 1rem;
-            opacity: 0.6;
-            letter-spacing: 2px;
-            font-weight: bold;
-        }
-
-        #display-text {
-            font-size: 2.2rem;
-            line-height: 1.6;
-            text-align: left;
-            user-select: none;
-            overflow-y: hidden;
-            padding-right: 20px;
-        }
-
-        .char { color: var(--text-dim); transition: color 0.1s; display: inline-block; white-space: pre; }
-        .char.correct { color: var(--text-bright); text-shadow: 0 0 12px rgba(255, 255, 255, 0.4); }
-        .char.current { border-bottom: 3px solid var(--primary); animation: pulse 0.8s infinite; color: #fff; }
-        .char.wrong { color: var(--error); text-shadow: 0 0 15px var(--error); }
-
-        .glitch-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(255, 0, 85, 0.08);
-            z-index: 10;
-            pointer-events: none;
-            opacity: 0;
-        }
-
-        @keyframes pulse {
-            0%, 100% { border-color: var(--primary); opacity: 1; }
-            50% { border-color: #fff; opacity: 0.5; }
-        }
-
-        #start-screen {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5,5,5,0.98);
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            transition: opacity 0.5s ease;
-        }
-
-        h1 { font-size: 4.5rem; color: var(--primary); text-shadow: 0 0 30px var(--primary); margin: 0; letter-spacing: 10px; }
-        p { font-size: 1.2rem; opacity: 0.7; margin: 20px 0; letter-spacing: 2px; }
-        
-        .restart-btn {
-            background: transparent;
-            border: 2px solid var(--primary);
-            color: var(--primary);
-            padding: 15px 40px;
-            font-family: 'Space Mono', monospace;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            margin-top: 20px;
-            z-index: 101;
-        }
-
-        .restart-btn:hover {
-            background: var(--primary);
-            color: black;
-            box-shadow: 0 0 20px var(--primary);
-        }
-
-        .hidden { display: none !important; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lumina Flow</title>
+  <meta name="description" content="Kinetic typing engine — practice tool and performance instrument." />
+  <meta name="theme-color" content="#07070a" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root, [data-theme="phosphor"] {
+      --bg: #07070a; --surface: #111116; --elevated: #18181f;
+      --fg: #ececf1; --muted: #8b8b96; --subtle: #5c5c66;
+      --primary: #6ee7f2; --primary-fg: #071314; --error: #fb7185;
+      --border: color-mix(in oklab, var(--fg) 12%, transparent);
+    }
+    [data-theme="void"] {
+      --bg: #0a0a0b; --surface: #141416; --elevated: #1c1c20;
+      --fg: #f4f4f5; --muted: #a1a1aa; --subtle: #71717a;
+      --primary: #c8ccd4; --primary-fg: #0a0a0b;
+    }
+    [data-theme="amber"] {
+      --bg: #0c0b09; --surface: #161410; --elevated: #1e1b16;
+      --fg: #f3eee6; --muted: #a89f90; --subtle: #6f675c;
+      --primary: #e4c9a0; --primary-fg: #1a140c;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--fg); }
+    body { font-family: Syne, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    button { font-family: inherit; cursor: pointer; }
+    button:disabled { cursor: default; opacity: .4; }
+    canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    .wrap { position: relative; z-index: 2; min-height: 100dvh; display: flex; flex-direction: column; }
+    header, footer { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; }
+    footer { justify-content: center; font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--subtle); letter-spacing: .12em; }
+    .brand { font-size: 13px; font-weight: 600; letter-spacing: .28em; color: var(--primary); }
+    .sub { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--subtle); margin-top: 4px; }
+    .icon-btn {
+      height: 36px; width: 36px; border: 0; border-radius: 8px;
+      background: transparent; color: var(--muted);
+    }
+    .icon-btn:hover { color: var(--fg); background: var(--surface); }
+    main { flex: 1; width: min(920px, calc(100% - 32px)); margin: 0 auto; padding: 8px 0 48px; }
+    h1 { font-size: clamp(1.8rem, 5vw, 3.6rem); font-weight: 600; letter-spacing: -.03em; line-height: 1.1; margin: 0 0 12px; text-wrap: balance; }
+    .lede { color: var(--muted); max-width: 36rem; line-height: 1.5; margin: 0 0 20px; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .chip {
+      height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); font-size: 11px; font-weight: 600;
+      letter-spacing: .14em; text-transform: uppercase;
+    }
+    .chip[aria-pressed="true"] { background: var(--primary); color: var(--primary-fg); border-color: transparent; }
+    .cta {
+      height: 48px; padding: 0 28px; border: 0; border-radius: 10px;
+      background: var(--primary); color: var(--primary-fg); font-size: 15px; font-weight: 600;
+    }
+    .ghost, .outline {
+      height: 44px; padding: 0 16px; border-radius: 10px; font-size: 14px; font-weight: 500;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .outline { background: transparent; color: var(--fg); border: 1px solid var(--border); }
+    .ghost { background: transparent; color: var(--muted); border: 0; }
+    .meta { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--subtle); }
+    textarea {
+      width: 100%; max-width: 36rem; height: 7rem; margin: 8px 0 0; padding: 14px;
+      border-radius: 20px; border: 1px solid var(--border); background: var(--surface);
+      color: var(--fg); font-family: "IBM Plex Mono", monospace; font-size: 13px; resize: vertical;
+    }
+    textarea:focus, .cta:focus, .chip:focus, .icon-btn:focus { outline: 2px solid color-mix(in oklab, var(--primary) 50%, transparent); outline-offset: 2px; }
+    .hud { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-family: "IBM Plex Mono", monospace; }
+    .stat .k { font-size: 10px; letter-spacing: .18em; color: var(--subtle); text-transform: uppercase; }
+    .stat .v { font-size: 18px; font-variant-numeric: tabular-nums; margin-top: 4px; }
+    .stat .v.accent { color: var(--primary); }
+    .bar { height: 4px; background: var(--elevated); border-radius: 999px; margin: 12px 0 28px; overflow: hidden; }
+    .bar > i { display: block; height: 100%; background: var(--primary); width: 0; }
+    .stream { font-family: "IBM Plex Mono", monospace; font-size: clamp(1.2rem, 2.6vw, 1.7rem); line-height: 1.7; }
+    .word { display: inline-block; margin-right: .55em; }
+    .ch { white-space: pre; color: var(--subtle); }
+    .ch.ok { color: var(--fg); }
+    .ch.bad, .ch.miss, .extra { color: var(--error); }
+    .ch.caret-line { border-bottom: 2px solid var(--primary); color: var(--fg); }
+    .ch.caret-block { background: color-mix(in oklab, var(--primary) 25%, transparent); color: var(--fg); }
+    .end-caret { display: inline-block; width: .55em; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 20px 0; }
+    @media (min-width: 640px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+    .card { border: 1px solid var(--border); background: var(--surface); border-radius: 20px; padding: 14px 16px; }
+    .card .k { font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .16em; color: var(--subtle); text-transform: uppercase; }
+    .card .v { font-family: "IBM Plex Mono", monospace; font-size: 20px; font-variant-numeric: tabular-nums; margin-top: 4px; }
+    .big { font-size: clamp(3.2rem, 10vw, 4.6rem); font-weight: 600; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+    .plot { height: 160px; border: 1px solid var(--border); background: var(--surface); border-radius: 20px; padding: 10px; }
+    .keys { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .keys span { border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--muted); }
+    .overlay { position: fixed; inset: 0; z-index: 30; background: color-mix(in oklab, var(--bg) 78%, transparent); display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .panel { width: min(420px, 100%); background: var(--surface); border: 1px solid var(--border); border-radius: 28px; padding: 22px; }
+    .panel h2 { margin: 0; font-size: 22px; }
+    .panel p { color: var(--muted); font-size: 14px; }
+    .stack { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+    .glitch { pointer-events: none; position: fixed; inset: 0; z-index: 10; background: color-mix(in oklab, var(--error) 10%, transparent); opacity: 0; transition: opacity 150ms; }
+    .glitch.on { opacity: 1; box-shadow: inset 8px 0 0 color-mix(in oklab, var(--error) 35%, transparent), inset -8px 0 0 color-mix(in oklab, var(--primary) 25%, transparent); }
+    .hidden { display: none !important; }
+    .shake { transform: translateX(2px); }
+    input[type="range"] { accent-color: var(--primary); width: 140px; }
+    label.rowline { display: flex; justify-content: space-between; align-items: center; font-size: 14px; margin: 12px 0; }
+    #hidden-input { position: fixed; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  </style>
 </head>
 <body>
-
-    <canvas id="particleCanvas"></canvas>
-    <div class="glitch-overlay" id="glitch"></div>
-
-    <div id="start-screen">
-        <h1 id="main-title">LUMINA FLOW</h1>
-        <p id="sub-title">INITIALIZE DATA STREAM</p>
-        <button class="restart-btn" id="start-btn">BEGIN SEQUENCE</button>
-        <p style="font-size: 0.8rem; margin-top: 40px;">(OR PRESS ANY KEY TO START)</p>
+<canvas id="fx"></canvas>
+<div class="glitch" id="glitch"></div>
+<div class="wrap" id="app">
+  <header>
+    <div>
+      <div class="brand">LUMINA FLOW</div>
+      <div class="sub">kinetic typing</div>
     </div>
-
-    <div id="game-container">
-        <div id="hud">
-            <span id="wpm-display">WPM: 0</span>
-            <span id="accuracy-display">ACC: 100%</span>
-        </div>
-        <div id="display-text"></div>
+    <div>
+      <button class="icon-btn" id="mute-btn" aria-label="Mute">♪</button>
+      <button class="icon-btn" id="set-btn" aria-label="Settings">⚙</button>
     </div>
+  </header>
+  <main>
+    <section id="hud" class="hidden">
+      <div class="hud">
+        <div class="stat"><div class="k">WPM</div><div class="v" id="wpm">0</div></div>
+        <div class="stat"><div class="k">ACC</div><div class="v" id="acc">100%</div></div>
+        <div class="stat"><div class="k">RAW</div><div class="v" id="raw">0</div></div>
+        <div class="stat"><div class="k">COMBO</div><div class="v accent" id="combo">0</div></div>
+        <div class="stat"><div class="k">LEFT</div><div class="v accent" id="left">—</div></div>
+      </div>
+      <div class="bar"><i id="flowbar"></i></div>
+    </section>
+    <section id="idle">
+      <h1>Type until the stream sings.</h1>
+      <p class="lede">A practice tool with real modes and stats, dressed as a performance instrument. Hold combo to climb the scale.</p>
+      <div class="row" style="margin: 8px 0 20px; align-items:center; gap:16px;">
+        <button class="cta" id="begin">Begin stream</button>
+        <span class="meta" id="pb-line">No personal best yet</span>
+      </div>
+      <div class="row" id="modes"></div>
+      <div class="row" id="corpora"></div>
+      <div class="row" id="flags"></div>
+      <textarea id="custom" class="hidden" placeholder="Paste a passage. The stream will use your words."></textarea>
+    </section>
+    <section id="stream" class="stream hidden"></section>
+    <section id="results" class="hidden"></section>
+  </main>
+  <footer id="hint">Enter start · Esc settings · Tab restart</footer>
+</div>
+<div class="overlay hidden" id="pause">
+  <div class="panel">
+    <h2>Paused</h2>
+    <p>Escape resumes. Tab starts a new stream.</p>
+    <div class="stack">
+      <button class="cta" id="resume">Resume</button>
+      <button class="outline" id="end-stream">End stream</button>
+      <button class="ghost" id="new-from-pause">New stream</button>
+    </div>
+  </div>
+</div>
+<div class="overlay hidden" id="settings">
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h2>Settings</h2>
+      <button class="icon-btn" id="close-set" aria-label="Close">✕</button>
+    </div>
+    <div class="row" style="margin-top:16px" id="themes"></div>
+    <div class="row" id="carets"></div>
+    <label class="rowline">Sound <input type="range" id="vol" min="0" max="1" step="0.05" /></label>
+    <label class="rowline">Mute <input type="checkbox" id="mute" /></label>
+    <label class="rowline">Reduce motion <input type="checkbox" id="motion" /></label>
+  </div>
+</div>
+<input id="hidden-input" aria-label="Typing input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+<script>
+const ENGLISH = "the be to of and a in that have I it for not on with he as you do at this but his by from they we say her she or an will my one all would there their what so up out if about who get which go me when make can like time no just him know take people into year your good some could them see other than then now look only come its over think also back after use two how our work first well way even new want because any these give day most us is are was were been being had has did does doing may might must shall should need here where why each few more such own same too very still never always often once again every both between under before while during without within against through across around near far left right next last long little great small large high old young early late hard easy open close start end begin keep let put set run move turn show call try ask feel become leave mean seem help talk hear play live believe hold bring happen write provide sit stand lose pay meet include continue learn change lead understand watch follow stop create speak read allow add spend grow walk win offer remember love consider appear buy wait serve send expect build stay fall cut reach remain suggest raise pass sell require report decide pull".split(" ");
+const TECH = "algorithm neural network cybernetics protocol interface velocity phosphor kinetic resonance system mainframe encrypted binary flux quantum synthesis void echo compile debug runtime stack overflow memory cache latency bandwidth entropy matrix vector node proxy firewall encryption payload throughput compiler asynchronous callback middleware framework architecture microservice hypervisor container orchestration deployment repository abstraction polymorphism inheritance encapsulation recursion iteration concurrency parallelism serialization deadlock handshake packet segment datagram biometric cryptography decryption singularity subroutine telemetry firmware hardware software frontend backend fullstack database query syntax logic boolean integer string character variable constant function method class object instance parameter argument pointer reference heap buffer scripting automation workflow distributed scalability authentication authorization token session request response endpoint socket websocket tunneling pipeline cluster thread mutex kernel process scheduler interrupt register opcode bytecode virtualization sandbox namespace module package".split(" ");
+const HARD = "idiosyncrasy ubiquitous obfuscation juxtaposition anachronism epistemology phenomenology synchronization prestidigitation sesquipedalian circumference consequential incomprehensible misinterpretation counterintuitive thermodynamics photosynthesis electrochemical neuroplasticity interoperability perpendicular quadrilateral infrastructure implementation responsibility characterization acknowledgment straightforward disproportionate uncharacteristic reconciliation procrastination multiplication differentiation transcendental metamorphosis constellation architecture simultaneously unquestionably extraordinary consciousness subterranean encyclopedia philosophy hypothesis paradigm heuristic".split(" ");
+const SYMBOLS = ["user@host","id=42","arr[0]","map.get","fn()","x=>x","{ok}","C++","O(n)","git-diff","v2.1.0","cost:$9","it's","we're","don't","can't","foo_bar","JSON","HTTP/2","A&B","q?","end;","wait:","n*m","a/b","x-y","#tag","%off","$PATH","item#3","</>","&&","||","!=","===","=>","??","...","e-mail","3:00am","win-rate","self-test","non-zero","re-run"];
+const LISTS = { english: ENGLISH, tech: TECH, hard: HARD, symbols: SYMBOLS };
+const QUOTES = [
+  { text: "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.", source: "Jane Austen" },
+  { text: "Call me Ishmael. Some years ago — never mind how long precisely — having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world.", source: "Herman Melville" },
+  { text: "I went to the woods because I wished to live deliberately, to front only the essential facts of life, and see if I could not learn what it had to teach, and not, when I came to die, discover that I had not lived.", source: "Henry David Thoreau" },
+  { text: "We hold these truths to be self-evident, that all men are created equal, that they are endowed by their Creator with certain unalienable Rights, that among these are Life, Liberty and the pursuit of Happiness.", source: "Declaration of Independence" },
+  { text: "Four score and seven years ago our fathers brought forth on this continent, a new nation, conceived in Liberty, and dedicated to the proposition that all men are created equal.", source: "Abraham Lincoln" },
+  { text: "Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do: once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations in it.", source: "Lewis Carroll" },
+  { text: "To be, or not to be, that is the question: Whether 'tis nobler in the mind to suffer the slings and arrows of outrageous fortune, or to take arms against a sea of troubles.", source: "William Shakespeare" },
+  { text: "The sea is everything. It covers seven tenths of the terrestrial globe. Its breath is pure and healthy. It is an immense desert, where man is never lonely, for he feels life stirring on all sides.", source: "Jules Verne" },
+  { text: "I am no bird; and no net ensnares me; I am a free human being with an independent will, which I now exert to leave you.", source: "Charlotte Brontë" },
+  { text: "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity.", source: "Charles Dickens" },
+  { text: "If you have built castles in the air, your work need not be lost; that is where they should be. Now put the foundations under them.", source: "Henry David Thoreau" }
+];
+const PUNCT = [",", ".", "?", "!", ";", ":"];
+const SCALE = [261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25, 783.99, 880];
+const SAVE_KEY = "lumina-flow-save";
 
-    <script>
-        // 1. MASSIVE DICTIONARY
-        const WORDS = ["algorithm", "neural", "network", "cybernetics", "protocol", "interface", "velocity", "phosphor", "kinetic", "resonance", "system", "mainframe", "encrypted", "binary", "flux", "quantum", "synthesis", "void", "echo", "compile", "debug", "runtime", "stack", "overflow", "memory", "cache", "latency", "bandwidth", "entropy", "matrix", "vector", "node", "proxy", "firewall", "encryption", "payload", "throughput", "compiler", "asynchronous", "callback", "middleware", "framework", "architecture", "microservice", "hypervisor", "container", "orchestration", "deployment", "repository", "abstraction", "polymorphism", "inheritance", "encapsulation", "recursion", "iteration", "concurrency", "parallelism", "serialization", "deadlock", "handshake", "packet", "segment", "datagram", "nanotechnology", "biometric", "cryptography", "decryption", "singularity", "subroutine", "telemetry", "firmware", "hardware", "software", "backdoor", "frontend", "backend", "fullstack", "database", "query", "syntax", "logic", "boolean", "integer", "string", "character", "floating", "double", "variable", "constant", "function", "method", "class", "object", "instance", "parameter", "argument", "pointer", "reference", "heap", "buffer", "scripting", "automation", "workflow", "distributed", "scalability", "authentication", "authorization", "token", "session", "request", "response", "endpoint", "socket", "websocket", "packet", "tunneling"];
-        
-        const TEXT_LENGTH = 80; // Significantly longer typing experience
+function hashSeed(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function mulberry32(a) { return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function utcDate() { return new Date().toISOString().slice(0, 10); }
 
-        // 2. AUDIO
-        const SoundEngine = {
-            ctx: null, combo: 0,
-            scale: [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00],
-            async init() {
-                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                if (this.ctx.state === 'suspended') await this.ctx.resume();
-            },
-            playClick() {
-                if (!this.ctx) return;
-                const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
-                osc.frequency.setValueAtTime(this.scale[this.combo % this.scale.length], this.ctx.currentTime);
-                osc.type = 'sine'; gain.gain.setValueAtTime(0, this.ctx.currentTime);
-                gain.gain.linearRampToValueAtTime(0.15, this.ctx.currentTime + 0.01);
-                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
-                osc.connect(gain); gain.connect(this.ctx.destination);
-                osc.start(); osc.stop(this.ctx.currentTime + 0.15); this.combo++;
-            },
-            playError() {
-                if (!this.ctx) return; this.combo = 0;
-                const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
-                osc.frequency.value = 100; osc.type = 'sawtooth';
-                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.2);
-                osc.connect(gain); gain.connect(this.ctx.destination);
-                osc.start(); osc.stop(this.ctx.currentTime + 0.2);
-            }
-        };
+const Sound = {
+  ctx: null, master: null, sfx: null, pad: null, padOsc: null, padFilter: null, muted: false, volume: 0.7,
+  unlock() {
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" });
+      this.master = this.ctx.createGain(); this.sfx = this.ctx.createGain(); this.pad = this.ctx.createGain();
+      this.sfx.connect(this.master); this.pad.connect(this.master); this.master.connect(this.ctx.destination);
+      this.pad.gain.value = 0; this.apply();
+      const osc = this.ctx.createOscillator(); const f = this.ctx.createBiquadFilter();
+      osc.type = "sine"; osc.frequency.value = 110; f.type = "lowpass"; f.frequency.value = 240;
+      osc.connect(f); f.connect(this.pad); osc.start(); this.padOsc = osc; this.padFilter = f;
+    }
+    if (this.ctx.state === "suspended") this.ctx.resume();
+  },
+  apply() { if (this.master) this.master.gain.setTargetAtTime(this.muted ? 0 : this.volume * this.volume, this.ctx.currentTime, 0.02); },
+  setCombo(c) {
+    if (!this.ctx || !this.pad || !this.padFilter) return;
+    this.pad.gain.setTargetAtTime(this.muted ? 0 : Math.min(1, c / 48) * 0.045, this.ctx.currentTime, 0.08);
+    this.padFilter.frequency.setTargetAtTime(240 + Math.min(c, 64) * 8, this.ctx.currentTime, 0.1);
+  },
+  click(c) {
+    if (!this.ctx) return; this.setCombo(c);
+    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = "sine"; o.frequency.value = SCALE[c % SCALE.length];
+    g.gain.setValueAtTime(0, this.ctx.currentTime); g.gain.linearRampToValueAtTime(0.12, this.ctx.currentTime + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.12);
+    o.connect(g); g.connect(this.sfx); o.start(); o.stop(this.ctx.currentTime + 0.14);
+  },
+  error() {
+    if (!this.ctx) return; this.setCombo(0);
+    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = "sawtooth"; o.frequency.value = 92; g.gain.setValueAtTime(0.08, this.ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.18);
+    o.connect(g); g.connect(this.sfx); o.start(); o.stop(this.ctx.currentTime + 0.2);
+  }
+};
 
-        // 3. CORE STATE
-        let state = { started: false, text: "", charIndex: 0, mistakes: 0, correctChars: 0, startTime: null };
-        const canvas = document.getElementById('particleCanvas');
-        const ctx = canvas.getContext('2d');
-        const displayText = document.getElementById('display-text');
-        let width, height, particles = [];
+const particles = [];
+const canvas = document.getElementById("fx");
+const ctx = canvas.getContext("2d");
+function resize() { canvas.width = innerWidth * devicePixelRatio; canvas.height = innerHeight * devicePixelRatio; canvas.style.width = innerWidth + "px"; canvas.style.height = innerHeight + "px"; ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); }
+addEventListener("resize", resize); resize();
+function burst(x, y, color, n, speed) {
+  if (S.settings.reducedMotion) return;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, sp = Math.random() * speed + 0.4;
+    particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 0.4, life: 1, decay: Math.random() * 0.018 + 0.008, size: Math.random() * 2.2 + 0.6, color });
+  }
+  if (particles.length > 420) particles.splice(0, particles.length - 420);
+}
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  ctx.clearRect(0, 0, innerWidth, innerHeight);
+  const amb = S.phase === "running" ? Math.min(1, (S.run?.combo || 0) / 40) : 0.15;
+  if (!S.settings.reducedMotion && Math.random() < 0.08 + amb * 0.12) {
+    particles.push({ x: Math.random() * innerWidth, y: Math.random() * innerHeight, vx: (Math.random() - 0.5) * 0.15, vy: -0.12 - Math.random() * 0.2, life: 0.5, decay: 0.003, size: Math.random() * 1.2 + 0.3, color: "rgba(110,231,242,0.55)" });
+  }
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i]; p.x += p.vx * dt * 60; p.y += p.vy * dt * 60; p.life -= p.decay * dt * 60;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+    ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1; requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
 
-        function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
-        window.addEventListener('resize', resize); resize();
+const S = {
+  phase: "idle",
+  config: { mode: "time", duration: 30, wordCount: 50, corpus: "english", punctuation: false, numbers: false, strictness: "standard", daily: false, customText: "" },
+  settings: { theme: "phosphor", caret: "line", muted: false, volume: 0.7, reducedMotion: false },
+  save: { version: 1, settings: null, records: {}, history: [] },
+  run: null, result: null, replay: null, isPb: false, showCustom: false
+};
 
-        class Particle {
-            constructor(x, y, color) {
-                this.x = x; this.y = y;
-                const angle = Math.random() * Math.PI * 2; const speed = Math.random() * 4 + 1;
-                this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
-                this.life = 1.0; this.decay = Math.random() * 0.02 + 0.01; this.color = color;
-            }
-            update() { this.x += this.vx; this.y += this.vy; this.life -= this.decay; }
-            draw() { ctx.globalAlpha = this.life; ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, Math.PI * 2); ctx.fill(); }
-        }
+function loadSave() {
+  try { const raw = JSON.parse(localStorage.getItem(SAVE_KEY)); if (raw) { S.save = { version: 1, records: raw.records || {}, history: raw.history || [], settings: { ...S.settings, ...(raw.settings || {}) } }; S.settings = { ...S.settings, ...S.save.settings }; } } catch {}
+}
+function writeSave() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ version: 1, settings: S.settings, records: S.save.records, history: S.save.history })); } catch {} }
+function challengeKey(c) {
+  if (c.daily) return "daily:" + utcDate();
+  if (c.mode === "time") return `time:${c.duration}:${c.corpus}:${c.strictness}:${c.punctuation ? "p" : ""}:${c.numbers ? "n" : ""}`;
+  if (c.mode === "words") return `words:${c.wordCount}:${c.corpus}:${c.strictness}`;
+  if (c.mode === "quote") return "quote:" + c.strictness;
+  return `flow:${c.corpus}:${c.strictness}`;
+}
+function describe(c) {
+  if (c.daily) return "daily " + utcDate();
+  if (c.mode === "time") return `${c.duration}s ${c.corpus}`;
+  if (c.mode === "words") return `${c.wordCount} words ${c.corpus}`;
+  if (c.mode === "quote") return "quote";
+  return "flow · " + c.corpus;
+}
+function decorate(w, rng, punct, nums) {
+  if (nums && rng() < 0.1) return String(Math.floor(rng() * 900) + 10);
+  if (punct && rng() < 0.16) return w + PUNCT[Math.floor(rng() * PUNCT.length)];
+  if (punct && rng() < 0.05) return `"${w}"`;
+  if (punct && rng() < 0.08) return w[0].toUpperCase() + w.slice(1);
+  return w;
+}
+function genWords(cfg, rng, n) {
+  if (cfg.customText.trim()) return cfg.customText.trim().split(/\s+/).filter(Boolean).slice(0, Math.max(n, 1));
+  const list = LISTS[cfg.corpus]; const out = [];
+  while (out.length < n) {
+    const next = decorate(list[Math.floor(rng() * list.length)], rng, cfg.punctuation, cfg.numbers);
+    if (out[out.length - 1] !== next) out.push(next);
+  }
+  return out;
+}
+function buildChallenge(cfg, replay) {
+  if (replay?.words?.length) return { words: replay.words.slice(), quoteSource: replay.quoteSource, dailySeed: replay.dailySeed, rng: Math.random };
+  const seed = cfg.daily ? `lumina:${utcDate()}:${cfg.mode}:${cfg.duration}:${cfg.wordCount}:${cfg.corpus}:${cfg.punctuation}:${cfg.numbers}` : "r:" + Date.now() + Math.random();
+  const rng = mulberry32(hashSeed(seed));
+  if (cfg.mode === "quote" && !cfg.customText.trim()) {
+    const q = QUOTES[Math.floor(rng() * QUOTES.length)];
+    return { words: q.text.split(/\s+/).filter(Boolean), quoteSource: q.source, dailySeed: cfg.daily ? seed : undefined, rng };
+  }
+  const n = cfg.mode === "time" ? (cfg.duration >= 60 ? 280 : 180) : cfg.mode === "flow" ? 200 : Math.max(8, cfg.wordCount);
+  return { words: genWords(cfg, rng, n), dailySeed: cfg.daily ? seed : undefined, rng };
+}
+function createRun(cfg, replay) {
+  const b = buildChallenge(cfg, replay);
+  return {
+    config: { ...cfg }, words: b.words, quoteSource: b.quoteSource, dailySeed: b.dailySeed, rng: b.rng,
+    wordIndex: 0, charIndex: 0, extras: b.words.map(() => []), marks: b.words.map(w => Array.from(w, () => "pending")),
+    keystrokes: { correct: 0, incorrect: 0, extra: 0, missed: 0, backspace: 0 },
+    combo: 0, maxCombo: 0, startedAt: null, pauseStartedAt: null, pauseMs: 0, endedAt: null, finished: false, samples: []
+  };
+}
+function elapsed(r, now) {
+  if (r.startedAt == null) return 0;
+  const pauseNow = r.pauseStartedAt != null ? now - r.pauseStartedAt : 0;
+  return Math.max(0, (r.endedAt ?? now) - r.startedAt - r.pauseMs - pauseNow);
+}
+function statsAt(r, now) {
+  const minutes = Math.max(elapsed(r, now), 1000) / 60000;
+  const { correct, incorrect, extra, missed } = r.keystrokes;
+  const all = correct + incorrect + extra + missed;
+  return { wpm: Math.round((correct / 5) / minutes), raw: Math.round((all / 5) / minutes), accuracy: all === 0 ? 100 : Math.max(0, Math.round((correct / all) * 100)) };
+}
+function bump(r, ok) { if (ok) { r.combo++; if (r.combo > r.maxCombo) r.maxCombo = r.combo; } else r.combo = 0; }
+function ensureFlow(r) {
+  if (r.config.mode !== "flow") return;
+  if (r.words.length - r.wordIndex > 40) return;
+  const extra = genWords({ ...r.config, customText: "" }, mulberry32(hashSeed("flow:" + r.words.length)), 80);
+  extra.forEach(w => { r.words.push(w); r.marks.push(Array.from(w, () => "pending")); r.extras.push([]); });
+}
+function lastWord(r) { return r.wordIndex >= r.words.length - 1; }
+function finish(r, now) { if (r.finished) return; r.finished = true; r.endedAt = now; r.pauseStartedAt = null; sample(r, now); }
+function sample(r, now) {
+  if (r.startedAt == null) return;
+  const s = statsAt(r, now), t = elapsed(r, now) / 1000, last = r.samples[r.samples.length - 1];
+  if (last && t - last.t < 0.45) { last.wpm = s.wpm; last.raw = s.raw; last.t = t; return; }
+  r.samples.push({ t, wpm: s.wpm, raw: s.raw });
+}
+function handleKey(r, key, now) {
+  if (r.finished || r.pauseStartedAt != null) return { kind: "ignore" };
+  if (key === "Backspace") {
+    if (r.config.strictness === "strict") return { kind: "ignore" };
+    const extras = r.extras[r.wordIndex];
+    if (extras.length) { extras.pop(); r.keystrokes.backspace++; return { kind: "backspace" }; }
+    if (r.charIndex > 0) {
+      r.charIndex--; const m = r.marks[r.wordIndex][r.charIndex];
+      if (m === "correct") r.keystrokes.correct = Math.max(0, r.keystrokes.correct - 1);
+      if (m === "incorrect") r.keystrokes.incorrect = Math.max(0, r.keystrokes.incorrect - 1);
+      r.marks[r.wordIndex][r.charIndex] = "pending"; r.keystrokes.backspace++; return { kind: "backspace" };
+    }
+    if (r.wordIndex === 0) return { kind: "ignore" };
+    r.wordIndex--; const prev = r.words[r.wordIndex];
+    for (let i = 0; i < prev.length; i++) if (r.marks[r.wordIndex][i] === "missed") { r.marks[r.wordIndex][i] = "pending"; r.keystrokes.missed = Math.max(0, r.keystrokes.missed - 1); }
+    let lastTyped = prev.length; while (lastTyped > 0 && r.marks[r.wordIndex][lastTyped - 1] === "pending") lastTyped--;
+    r.charIndex = r.extras[r.wordIndex].length ? prev.length : lastTyped; r.keystrokes.backspace++; return { kind: "backspace" };
+  }
+  if (key.length !== 1) return { kind: "ignore" };
+  if (r.startedAt == null) r.startedAt = now;
+  const word = r.words[r.wordIndex];
+  if (!word) { finish(r, now); return { kind: "finished" }; }
+  if (key === " ") {
+    if (r.charIndex === 0 && !r.extras[r.wordIndex].length) return { kind: "ignore" };
+    if (r.config.strictness === "strict") {
+      if (r.charIndex !== word.length) { r.keystrokes.incorrect++; bump(r, false); return { kind: "error", combo: 0 }; }
+      r.keystrokes.correct++; bump(r, true);
+    } else if (r.charIndex < word.length) {
+      for (let i = r.charIndex; i < word.length; i++) { r.marks[r.wordIndex][i] = "missed"; r.keystrokes.missed++; }
+      bump(r, false);
+    } else { r.keystrokes.correct++; bump(r, true); }
+    const skipped = r.marks[r.wordIndex].some(m => m === "missed");
+    if (lastWord(r) && r.config.mode !== "time" && r.config.mode !== "flow") { r.wordIndex++; finish(r, now); return { kind: "finished" }; }
+    r.wordIndex++; r.charIndex = 0; ensureFlow(r);
+    return skipped ? { kind: "error", combo: 0 } : { kind: "correct", combo: r.combo };
+  }
+  const expected = word[r.charIndex];
+  if (expected == null) {
+    if (r.config.strictness === "strict") { bump(r, false); r.keystrokes.incorrect++; return { kind: "error", combo: 0 }; }
+    r.extras[r.wordIndex].push(key); r.keystrokes.extra++; bump(r, false); return { kind: "error", combo: 0 };
+  }
+  const ok = key === expected;
+  if (!ok && r.config.strictness === "strict") { r.keystrokes.incorrect++; bump(r, false); return { kind: "error", combo: 0 }; }
+  r.marks[r.wordIndex][r.charIndex] = ok ? "correct" : "incorrect"; r.charIndex++;
+  if (ok) r.keystrokes.correct++; else r.keystrokes.incorrect++; bump(r, ok);
+  if (lastWord(r) && r.charIndex >= word.length && r.config.mode !== "time" && r.config.mode !== "flow") { r.wordIndex++; finish(r, now); return { kind: "finished" }; }
+  ensureFlow(r);
+  return ok ? { kind: "correct", combo: r.combo } : { kind: "error", combo: 0 };
+}
+function toResult(r, now) {
+  const s = statsAt(r, now);
+  const wpms = r.samples.map(x => x.wpm).filter(n => n > 0);
+  const mean = wpms.length ? wpms.reduce((a, b) => a + b, 0) / wpms.length : s.wpm;
+  const sd = wpms.length < 2 ? 0 : Math.sqrt(wpms.reduce((a, b) => a + (b - mean) ** 2, 0) / (wpms.length - 1));
+  const consistency = mean <= 0 ? 100 : Math.max(0, Math.min(100, Math.round(100 - (sd / mean) * 100)));
+  const missed = {};
+  r.words.forEach((w, wi) => w.split("").forEach((ch, ci) => { const m = r.marks[wi][ci]; if (m === "incorrect" || m === "missed") missed[ch] = (missed[ch] || 0) + 1; }));
+  return { ...s, consistency, combo: r.maxCombo, samples: r.samples.slice(), config: r.config, words: r.words.slice(), quoteSource: r.quoteSource, missedKeys: missed, keystrokes: { ...r.keystrokes } };
+}
 
-        function animate() {
-            ctx.clearRect(0, 0, width, height);
-            particles = particles.filter(p => p.life > 0);
-            particles.forEach(p => { p.update(); p.draw(); });
-            requestAnimationFrame(animate);
-        }
-        animate();
+function chip(label, active, fn) {
+  const b = document.createElement("button"); b.className = "chip"; b.textContent = label; b.setAttribute("aria-pressed", active ? "true" : "false"); b.onclick = fn; return b;
+}
+function renderChips() {
+  const c = S.config;
+  const modes = document.getElementById("modes"); modes.innerHTML = "";
+  [[15, "time"], [30, "time"], [60, "time"]].forEach(([d]) => modes.append(chip(d + "s", c.mode === "time" && c.duration === d && !c.daily, () => { c.mode = "time"; c.duration = d; c.daily = false; renderIdle(); })));
+  [25, 50, 100].forEach(n => modes.append(chip(n + " words", c.mode === "words" && c.wordCount === n && !c.daily, () => { c.mode = "words"; c.wordCount = n; c.daily = false; renderIdle(); })));
+  modes.append(chip("Quote", c.mode === "quote" && !c.daily, () => { c.mode = "quote"; c.daily = false; renderIdle(); }));
+  modes.append(chip("Flow", c.mode === "flow" && !c.daily, () => { c.mode = "flow"; c.daily = false; renderIdle(); }));
+  modes.append(chip("Daily", c.daily, () => { c.daily = true; c.mode = "time"; c.duration = 30; c.corpus = "english"; renderIdle(); }));
+  const cor = document.getElementById("corpora"); cor.innerHTML = "";
+  ["english", "tech", "hard", "symbols"].forEach(id => cor.append(chip(id, c.corpus === id && c.mode !== "quote", () => { c.corpus = id; if (c.mode === "quote") c.mode = "time"; renderIdle(); })));
+  const fl = document.getElementById("flags"); fl.innerHTML = "";
+  fl.append(chip("Punct", c.punctuation, () => { c.punctuation = !c.punctuation; renderIdle(); }));
+  fl.append(chip("Numbers", c.numbers, () => { c.numbers = !c.numbers; renderIdle(); }));
+  fl.append(chip("Standard", c.strictness === "standard", () => { c.strictness = "standard"; renderIdle(); }));
+  fl.append(chip("Strict", c.strictness === "strict", () => { c.strictness = "strict"; renderIdle(); }));
+  fl.append(chip("Custom", S.showCustom, () => { S.showCustom = !S.showCustom; renderIdle(); }));
+}
+function renderIdle() {
+  renderChips();
+  const ta = document.getElementById("custom");
+  ta.classList.toggle("hidden", !S.showCustom);
+  ta.value = S.config.customText;
+  const pb = S.save.records[challengeKey(S.config)];
+  const last = S.save.history[0];
+  document.getElementById("pb-line").textContent = (pb ? `PB ${pb.wpm} WPM · ${pb.accuracy}%` : "No personal best yet") + (last ? `  · last ${last.wpm} WPM` : "");
+}
+function remaining(r, now) {
+  if (r.config.mode === "time") return Math.ceil(Math.max(0, r.config.duration - elapsed(r, now) / 1000)) + "s";
+  if (r.config.mode === "words") return Math.min(r.wordIndex, r.words.length) + "/" + r.words.length;
+  if (r.config.mode === "quote") return r.quoteSource || "quote";
+  return "combo " + r.combo;
+}
+function renderStream() {
+  const r = S.run; const from = Math.max(0, r.wordIndex - 12); const to = Math.min(r.words.length, r.wordIndex + 48);
+  const el = document.getElementById("stream"); el.innerHTML = "";
+  for (let wi = from; wi < to; wi++) {
+    const word = r.words[wi]; const span = document.createElement("span"); span.className = "word";
+    for (let ci = 0; ci < word.length; ci++) {
+      const ch = document.createElement("span"); ch.className = "ch"; ch.textContent = word[ci];
+      const m = r.marks[wi][ci]; if (m === "correct") ch.classList.add("ok");
+      if (m === "incorrect") ch.classList.add("bad"); if (m === "missed") ch.classList.add("miss");
+      if (wi === r.wordIndex && ci === r.charIndex) ch.classList.add(S.settings.caret === "block" ? "caret-block" : "caret-line");
+      span.append(ch);
+    }
+    (r.extras[wi] || []).forEach(c => { const e = document.createElement("span"); e.className = "extra"; e.textContent = c; span.append(e); });
+    if (wi === r.wordIndex && r.charIndex >= word.length) {
+      const caret = document.createElement("span"); caret.className = "end-caret " + (S.settings.caret === "block" ? "caret-block" : "caret-line"); span.append(caret);
+    }
+    el.append(span);
+  }
+}
+function updateHud(now) {
+  if (!S.run) return;
+  const s = statsAt(S.run, now);
+  document.getElementById("wpm").textContent = s.wpm;
+  document.getElementById("acc").textContent = s.accuracy + "%";
+  document.getElementById("raw").textContent = s.raw;
+  document.getElementById("combo").textContent = S.run.combo;
+  document.getElementById("left").textContent = remaining(S.run, now);
+  document.getElementById("flowbar").style.width = Math.min(100, (S.run.combo / 40) * 100) + "%";
+}
+function sparkline(samples) {
+  if (samples.length < 2) return `<div class="plot" style="display:flex;align-items:center;justify-content:center;color:var(--subtle);font-family:IBM Plex Mono,monospace;font-size:12px">Type a little longer to plot pace.</div>`;
+  const w = 840, h = 140, max = Math.max(...samples.map(s => Math.max(s.wpm, s.raw)), 1);
+  const pts = (key) => samples.map((s, i) => `${(i / (samples.length - 1)) * w},${h - (s[key] / max) * (h - 8) - 4}`).join(" ");
+  return `<div class="plot"><svg viewBox="0 0 ${w} ${h}" width="100%" height="100%" preserveAspectRatio="none"><polyline fill="none" stroke="var(--primary)" stroke-width="3" points="${pts("wpm")}" /><polyline fill="none" stroke="var(--muted)" stroke-width="1.5" points="${pts("raw")}" /></svg></div>`;
+}
+function renderResults() {
+  const r = S.result; const missed = Object.entries(r.missedKeys).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  document.getElementById("results").innerHTML = `
+    <p class="brand">${S.isPb ? "New personal best" : "Stream complete"}</p>
+    <div style="display:flex;align-items:end;gap:10px"><span class="big">${r.wpm}</span><span style="color:var(--primary);margin-bottom:10px">WPM</span></div>
+    <p class="meta">${describe(r.config)}</p>
+    <div class="grid">
+      <div class="card"><div class="k">Accuracy</div><div class="v">${r.accuracy}%</div></div>
+      <div class="card"><div class="k">Raw</div><div class="v">${r.raw}</div></div>
+      <div class="card"><div class="k">Combo</div><div class="v">${r.combo}</div></div>
+      <div class="card"><div class="k">Consistency</div><div class="v">${r.consistency}%</div></div>
+    </div>
+    ${sparkline(r.samples)}
+    ${missed.length ? `<div style="margin-top:18px"><div class="meta">FRICTION KEYS</div><div class="keys">${missed.map(([k, n]) => `<span>${k} · ${n}</span>`).join("")}</div></div>` : ""}
+    <div class="row" style="margin-top:22px">
+      <button class="cta" id="new-stream">New stream</button>
+      <button class="outline" id="replay">Replay</button>
+      <button class="ghost" id="copy">Copy</button>
+      <button class="ghost" id="card">Save card</button>
+      <button class="ghost" id="modes-btn">Modes</button>
+    </div>`;
+  document.getElementById("new-stream").onclick = () => start(false);
+  document.getElementById("replay").onclick = () => start(true);
+  document.getElementById("copy").onclick = async () => { await navigator.clipboard.writeText(`Lumina Flow · ${r.wpm} WPM · ${r.accuracy}% acc · ${describe(r.config)} · combo ${r.combo}`); document.getElementById("copy").textContent = "Copied"; };
+  document.getElementById("card").onclick = () => saveCard(r);
+  document.getElementById("modes-btn").onclick = () => setPhase("idle");
+}
+function saveCard(r) {
+  const c = document.createElement("canvas"); c.width = 1200; c.height = 630;
+  const g = c.getContext("2d"); g.fillStyle = "#07070a"; g.fillRect(0, 0, 1200, 630);
+  g.fillStyle = "#6ee7f2"; g.font = "600 28px Syne, sans-serif"; g.fillText("LUMINA FLOW", 72, 92);
+  g.fillStyle = "#8b8b96"; g.font = "16px IBM Plex Mono, monospace"; g.fillText(describe(r.config).toUpperCase(), 72, 128);
+  g.fillStyle = "#ececf1"; g.font = "600 160px Syne, sans-serif"; g.fillText(String(r.wpm), 72, 320);
+  const w = g.measureText(String(r.wpm)).width; g.fillStyle = "#6ee7f2"; g.font = "500 36px Syne, sans-serif"; g.fillText("WPM", 72 + w + 28, 300);
+  [["accuracy", r.accuracy + "%"], ["raw", r.raw], ["combo", r.combo], ["consistency", r.consistency + "%"]].forEach(([l, v], i) => {
+    const x = 72 + i * 250; g.fillStyle = "#ececf1"; g.font = "500 36px IBM Plex Mono, monospace"; g.fillText(String(v), x, 430);
+    g.fillStyle = "#8b8b96"; g.font = "14px IBM Plex Mono, monospace"; g.fillText(l.toUpperCase(), x, 458);
+  });
+  c.toBlob(blob => { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `lumina-flow-${r.wpm}wpm.png`; a.click(); });
+}
+function setPhase(p) {
+  S.phase = p;
+  document.getElementById("idle").classList.toggle("hidden", p !== "idle");
+  document.getElementById("hud").classList.toggle("hidden", p !== "running" && p !== "paused");
+  document.getElementById("stream").classList.toggle("hidden", p !== "running" && p !== "paused");
+  document.getElementById("results").classList.toggle("hidden", p !== "results");
+  document.getElementById("pause").classList.toggle("hidden", p !== "paused");
+  document.getElementById("hint").textContent = p === "running" ? "Tab restart · Esc pause" : "Enter start · Esc settings · Tab restart";
+  if (p === "idle") renderIdle();
+}
+function start(replay) {
+  Sound.unlock();
+  S.config.customText = document.getElementById("custom").value;
+  const rec = replay ? S.replay : null;
+  S.run = createRun(S.config, rec);
+  S.replay = { words: S.run.words.slice(), quoteSource: S.run.quoteSource, dailySeed: S.run.dailySeed };
+  S.result = null; S.isPb = false; setPhase("running"); renderStream(); updateHud(Date.now());
+  document.getElementById("hidden-input").focus();
+}
+function endRun(now) {
+  finish(S.run, now); const res = toResult(S.run, now); S.result = res;
+  const key = challengeKey(res.config); const prev = S.save.records[key];
+  S.isPb = !prev || res.wpm > prev.wpm || (res.wpm === prev.wpm && res.accuracy > prev.accuracy);
+  if (S.isPb) S.save.records[key] = { wpm: res.wpm, accuracy: res.accuracy, at: new Date().toISOString() };
+  S.save.history = [{ wpm: res.wpm, accuracy: res.accuracy, config: res.config }, ...S.save.history].slice(0, 24);
+  writeSave(); setPhase("results"); renderResults();
+}
+function onTyped(key) {
+  if (!S.run || S.phase !== "running") return;
+  const now = Date.now(); const o = handleKey(S.run, key, now);
+  const caret = document.querySelector(".caret-line, .caret-block");
+  const rect = caret?.getBoundingClientRect();
+  const color = getComputedStyle(document.documentElement).getPropertyValue("--primary").trim() || "#6ee7f2";
+  if (o.kind === "correct") { Sound.click(o.combo); if (rect) burst(rect.left, rect.top, color, Math.min(18, 6 + Math.floor(o.combo / 8)), 2.8); }
+  if (o.kind === "error") {
+    Sound.error(); if (rect) burst(rect.left, rect.top, "#fb7185", 8, 3.4);
+    if (!S.settings.reducedMotion) { document.getElementById("glitch").classList.add("on"); document.getElementById("app").classList.add("shake"); setTimeout(() => { document.getElementById("glitch").classList.remove("on"); document.getElementById("app").classList.remove("shake"); }, 110); }
+  }
+  renderStream(); updateHud(now);
+  if (o.kind === "finished" || S.run.finished) endRun(now);
+}
+function applySettings() {
+  document.documentElement.dataset.theme = S.settings.theme;
+  Sound.muted = S.settings.muted; Sound.volume = S.settings.volume; Sound.apply();
+  document.getElementById("mute").checked = S.settings.muted;
+  document.getElementById("motion").checked = S.settings.reducedMotion;
+  document.getElementById("vol").value = S.settings.volume;
+  document.getElementById("mute-btn").textContent = S.settings.muted ? "×" : "♪";
+  const th = document.getElementById("themes"); th.innerHTML = "";
+  ["phosphor", "void", "amber"].forEach(id => th.append(chip(id, S.settings.theme === id, () => { S.settings.theme = id; applySettings(); writeSave(); })));
+  const ca = document.getElementById("carets"); ca.innerHTML = "";
+  ["line", "block"].forEach(id => ca.append(chip(id, S.settings.caret === id, () => { S.settings.caret = id; applySettings(); writeSave(); })));
+}
 
-        // 4. GAMEFLOW
-        function renderText() {
-            displayText.innerHTML = '';
-            state.text.split('').forEach((char, i) => {
-                const span = document.createElement('span');
-                span.innerText = char;
-                span.className = 'char';
-                if (i === state.charIndex) span.className += ' current';
-                if (i < state.charIndex) span.className += ' correct';
-                displayText.appendChild(span);
-            });
-            // Auto-scroll
-            const current = document.querySelector('.current');
-            if (current) current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+document.getElementById("begin").onclick = () => start(false);
+document.getElementById("custom").oninput = e => { S.config.customText = e.target.value; };
+document.getElementById("mute-btn").onclick = () => { S.settings.muted = !S.settings.muted; applySettings(); writeSave(); };
+document.getElementById("set-btn").onclick = () => document.getElementById("settings").classList.remove("hidden");
+document.getElementById("close-set").onclick = () => document.getElementById("settings").classList.add("hidden");
+document.getElementById("mute").onchange = e => { S.settings.muted = e.target.checked; applySettings(); writeSave(); };
+document.getElementById("motion").onchange = e => { S.settings.reducedMotion = e.target.checked; writeSave(); };
+document.getElementById("vol").oninput = e => { S.settings.volume = Number(e.target.value); S.settings.muted = false; applySettings(); writeSave(); };
+document.getElementById("resume").onclick = () => { if (S.run) { const n = Date.now(); S.run.pauseMs += n - S.run.pauseStartedAt; S.run.pauseStartedAt = null; setPhase("running"); } };
+document.getElementById("end-stream").onclick = () => { if (S.run) endRun(Date.now()); };
+document.getElementById("new-from-pause").onclick = () => start(false);
 
-        async function startNewRound() {
-            await SoundEngine.init();
-            // Reset Stats
-            state.charIndex = 0; state.mistakes = 0; state.correctChars = 0;
-            state.startTime = Date.now();
-            // Generate Random Words
-            state.text = Array.from({length: TEXT_LENGTH}, () => WORDS[Math.floor(Math.random() * WORDS.length)]).join(' ');
-            state.started = true;
-            
-            document.getElementById('start-screen').classList.add('hidden');
-            document.getElementById('wpm-display').innerText = "WPM: 0";
-            document.getElementById('accuracy-display').innerText = "ACC: 100%";
-            renderText();
-        }
+addEventListener("keydown", e => {
+  if (!document.getElementById("settings").classList.contains("hidden") && e.key !== "Escape") return;
+  const t = e.target;
+  if (t && t.id === "custom") return;
+  if (e.key === "Escape") {
+    e.preventDefault();
+    if (S.phase === "running") { S.run.pauseStartedAt = Date.now(); setPhase("paused"); }
+    else if (S.phase === "paused") { const n = Date.now(); S.run.pauseMs += n - S.run.pauseStartedAt; S.run.pauseStartedAt = null; setPhase("running"); }
+    else document.getElementById("settings").classList.toggle("hidden");
+    return;
+  }
+  if (e.key === "Tab") { e.preventDefault(); start(false); return; }
+  if (e.key === "Enter" && (S.phase === "idle" || S.phase === "results")) { e.preventDefault(); start(false); return; }
+  if (S.phase !== "running") return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === "Backspace" || e.key.length === 1) { e.preventDefault(); onTyped(e.key); }
+});
+document.getElementById("hidden-input").addEventListener("keydown", e => {
+  if (S.phase !== "running") return;
+  if (e.key === "Backspace" || e.key.length === 1) { e.preventDefault(); e.stopPropagation(); onTyped(e.key); }
+});
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") Sound.unlock(); });
 
-        // Listener for the Start Button
-        document.getElementById('start-btn').addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent duplicate triggers
-            startNewRound();
-        });
+(function tick() {
+  if (S.phase === "running" && S.run && !S.run.finished) {
+    const now = Date.now(); sample(S.run, now); updateHud(now);
+    if (S.run.config.mode === "time" && S.run.startedAt && elapsed(S.run, now) >= S.run.config.duration * 1000) endRun(now);
+  }
+  requestAnimationFrame(tick);
+})();
 
-        window.addEventListener('keydown', (e) => {
-            // Handle Restart via Keypress
-            if (!state.started) {
-                if (!["Shift", "Control", "Alt", "Meta"].includes(e.key)) {
-                    startNewRound();
-                }
-                return;
-            }
-
-            if (e.key.length !== 1 && e.key !== ' ') return;
-            e.preventDefault();
-
-            const charSpans = document.querySelectorAll('.char');
-            const target = state.text[state.charIndex];
-            const rect = charSpans[state.charIndex].getBoundingClientRect();
-
-            if (e.key === target) {
-                SoundEngine.playClick();
-                for(let i=0; i<8; i++) particles.push(new Particle(rect.left, rect.top, '#00f3ff'));
-                state.charIndex++; state.correctChars++;
-            } else {
-                SoundEngine.playError();
-                document.getElementById('glitch').style.opacity = 1;
-                setTimeout(() => document.getElementById('glitch').style.opacity = 0, 100);
-                for(let i=0; i<5; i++) particles.push(new Particle(rect.left, rect.top, '#ff0055'));
-                state.mistakes++;
-            }
-
-            if (state.charIndex >= state.text.length) {
-                // END OF GAME
-                state.started = false;
-                const finalWPM = document.getElementById('wpm-display').innerText;
-                const finalACC = document.getElementById('accuracy-display').innerText;
-                
-                document.getElementById('start-screen').classList.remove('hidden');
-                document.getElementById('main-title').innerText = "STREAM COMPLETE";
-                document.getElementById('sub-title').innerHTML = `${finalWPM} — ${finalACC}`;
-                document.getElementById('start-btn').innerText = "RE-INITIALIZE";
-            } else {
-                renderText();
-                const time = (Date.now() - state.startTime) / 60000;
-                const wpm = Math.round((state.correctChars / 5) / time) || 0;
-                const acc = Math.round(((state.charIndex - state.mistakes) / state.charIndex) * 100) || 100;
-                document.getElementById('wpm-display').innerText = `WPM: ${wpm}`;
-                document.getElementById('accuracy-display').innerText = `ACC: ${acc}%`;
-            }
-        });
-    </script>
+loadSave();
+if (matchMedia("(prefers-reduced-motion: reduce)").matches) S.settings.reducedMotion = true;
+applySettings(); renderIdle();
+</script>
 </body>
 </html>

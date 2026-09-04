@@ -1,17 +1,33 @@
-# 🎹 Lumina Flow
-> A minimalist, high-performance typing engine built with procedural audio and particle physics.
+# Lumina Flow
 
-**[Click here to play the live demo](https://gundaif.github.io/lumina-flow/)**
+A kinetic typing engine: practice tool and performance instrument.
 
-## ✨ Features
-- **Musical Typing:** Every keystroke generates a note in a pentatonic scale. Maintain your flow to climb the scale.
-- **Kinetic Feedback:** Custom particle engine reacts to your typing speed and accuracy.
-- **Glitch Engine:** Visual chromatic aberration and screen shakes signal errors without breaking immersion.
+**[Play the live demo](https://gundaif.github.io/lumina-flow/)**
 
-## 🛠️ Tech Stack
-- **Engine:** Vanilla JavaScript (ES6+)
-- **Graphics:** HTML5 Canvas API
-- **Audio:** Web Audio API (Synthesized on-the-fly)
+## Features
 
-## ⚖️ License
-MIT License - See the [LICENSE](LICENSE) file for details.
+- **Modes:** 15 / 30 / 60s, 25 / 50 / 100 words, quotes, flow endurance, daily seed
+- **Corpora:** English, tech, hard words, symbols — plus punctuation, numbers, and custom paste
+- **Rules:** Standard (backspace) or Strict
+- **Musical typing:** pentatonic clicks that climb with combo, plus a flow pad
+- **Kinetic feedback:** particles, glitch, and a combo bar
+- **Results:** WPM, raw, accuracy, consistency, pace plot, friction keys, local PBs
+- **Replay** the same passage, copy a result line, or save a share card
+- **Themes:** phosphor, void, amber
+
+## Controls
+
+| Key | Action |
+| --- | --- |
+| Enter | Start a new stream |
+| Tab | Restart |
+| Esc | Pause / settings |
+| Backspace | Fix (standard mode) |
+
+## Tech
+
+Vanilla JavaScript, HTML5 Canvas, Web Audio API. No build step — GitHub Pages serves `index.html`.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
