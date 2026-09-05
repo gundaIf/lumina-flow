@@ -7,7 +7,7 @@ A kinetic typing engine: practice tool and performance instrument.
 ## Features
 
 - **Modes:** 15 / 30 / 60s, 25 / 50 / 100 words, quotes, flow endurance, daily seed
-- **Corpora:** English, tech, hard words, symbols — plus punctuation, numbers, and custom paste
+- **Corpora:** English, tech, hard words, symbols, plus punctuation, numbers, and custom paste
 - **Rules:** Standard (backspace) or Strict
 - **Musical typing:** pentatonic clicks that climb with combo, plus a flow pad
 - **Kinetic feedback:** particles, glitch, and a combo bar
@@ -26,8 +26,8 @@ A kinetic typing engine: practice tool and performance instrument.
 
 ## Tech
 
-Vanilla JavaScript, HTML5 Canvas, Web Audio API. No build step — GitHub Pages serves `index.html`.
+Vanilla JavaScript, HTML5 Canvas, Web Audio API. No build step. GitHub Pages serves `index.html`.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
